@@ -1,206 +1,206 @@
 # rdflib-ucum
 
-**UCUM custom datatypes for RDFLib** — unit-aware equality, comparison, arithmetic, and SPARQL operator support for physical quantity literals.
+**UCUM custom datatypes for RDFLib** - unit-aware equality, comparison, arithmetic, and SPARQL operator support.
 
-```python
-import rdflib_ucum  # auto-registers everything
-from rdflib import Literal, Graph, Namespace
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 
-CDT = Namespace("https://w3id.org/cdt/")
+## Overview
 
-# Unit-aware equality: 1 km == 1000 m ✅
-a = Literal("1 km", datatype=CDT.length)
-b = Literal("1000 m", datatype=CDT.length)
-assert a.eq(b)  # True
-```
+`rdflib-ucum` extends [RDFLib](https://rdflib.readthedocs.io/) with support for the CDT (Custom Datatypes) quantity vocabulary defined by Lefrançois & Zimmermann. The CDT specification defines `cdt:ucum` and related datatypes as `rdfs:Datatype` instances with a formal lexical space: a decimal number (with optional scientific notation), at least one space, and a UCUM unit expression. The value space is pairs `(v, u)` where v is a real number and u is a UCUM unit, with the lexical-to-value mapping normalising to SI base units internally. The full specification is published at [ci.mines-stetienne.fr/lindt/v4/custom_datatypes](https://ci.mines-stetienne.fr/lindt/v4/custom_datatypes).
 
-## What This Does
+`import rdflib_ucum` and RDFLib gains the ability to store, compare, sort, and compute with physical quantities both in Python and inside SPARQL queries.
 
-A **standalone pip-installable package** that adds 35 CDT (Custom DataTypes) to RDFLib, enabling physical quantity support in RDF graphs and SPARQL queries. Mirrors the [jena-ucum-lib](https://github.com/Irfan-Ullah-cs/jena-ucum) for Apache Jena.
+The unit parsing and conversion pipeline is built on two libraries:
 
-### Comparison with Jena
+- **[ucumvert](https://github.com/dalito/ucumvert)** parses [UCUM](https://ucum.org/) unit codes (e.g. `km/h`, `kg.m/s2`, `eV`, `kPa`) into a Pint-compatible registry via `PintUcumRegistry`.
+- **[Pint](https://pint.readthedocs.io/)** handles all dimensional analysis, unit conversion, and arithmetic, tracking physical dimensions through every operation so that `2 kg * 3 m/s2` knows it equals `6 N`.
 
-| Feature | Jena (2018 fork) | jena-ucum-lib (2024) | **rdflib-ucum** |
-|---|---|---|---|
-| Datatype registration | ✅ TypeMapper | ✅ TypeMapper | ✅ `bind()` |
-| SPARQL `=` equality | ❌ Required fork | ✅ Custom function | ✅ **Native** via `Literal.eq()` |
-| SPARQL `<`, `>`, `<=`, `>=` | ❌ Required fork | ✅ Custom function | ✅ **Native operators** |
-| SPARQL `+`, `-`, `*`, `/` | ❌ Required fork | ✅ Custom function | ✅ **Native operators** |
-| Python operators | N/A (Java) | N/A (Java) | ✅ `+`, `-`, `>`, `<` on Literals |
-| ORDER BY | ❌ Required fork | ⚠️ Workaround | ✅ **Native** |
-| Standalone package | ❌ No | ✅ Yes | ✅ **Yes** |
+On `import rdflib_ucum`, three things happen automatically:
 
-**Key advantage over Jena**: In Jena, operator overloading (`=`, `<`, `>`, `+`) was impossible standalone and required forking the Jena core. In RDFLib, ALL operators work standalone.
+1. **`register_datatypes()`** calls `rdflib.term.bind()` for all CDT types, so `Literal.toPython()` returns a `UCUMQuantity` instead of a raw string, enabling value-space equality, ordering, and arithmetic through the standard Literal API.
+2. **`install_sparql_patches()`** monkey-patches RDFLib's SPARQL engine to intercept CDT-typed literals before the XSD-only guards block them, unlocking native `<`, `>`, `<=`, `>=`, `+`, `-`, `*`, `/` in FILTER and BIND expressions.
+3. **`register_sparql_functions()`** registers utility functions under the `cdt:` namespace such as `cdt:sameDimension`.
+
+Parsed units are cached via `lru_cache` for performance.
 
 ## Installation
 
 ```bash
-pip install -e .
+pip install "rdflib-ucum @ git+https://github.com/Irfan-Ullah-cs/rdflib-ucum.git"
 ```
 
-Dependencies: `rdflib>=7.0.0`, `pint>=0.23`. Optional: `ucumvert` for full UCUM grammar support.
+**Dependencies:** `rdflib >= 7.0.0`, `pint >= 0.23`, `ucumvert`
 
-## Usage
-
-### Basic: Create and Parse Quantity Literals
+## Quick Start
 
 ```python
-import rdflib_ucum
-from rdflib import Literal, Namespace
+import rdflib_ucum  # auto-registers everything on import
+from rdflib import Literal
+from rdflib_ucum import CDT
 
-CDT = Namespace("https://w3id.org/cdt/")
+a = Literal("1 km",   datatype=CDT.length)
+b = Literal("1000 m", datatype=CDT.length)
 
-lit = Literal("1.2 km", datatype=CDT.length)
-q = lit.toPython()  # UCUMQuantity(1.2, 'km')
-print(q.magnitude)  # 1.2
-print(q.ucum_unit)  # 'km'
+assert a.toPython() == b.toPython()  # True - unit-aware equality
+assert a.toPython() > Literal("500 m", datatype=CDT.length).toPython()
 ```
 
-### Python Operators
+## Python API
+
+`UCUMQuantity` is the core value type, created automatically when you call `.toPython()` on a CDT Literal, or directly:
 
 ```python
-a = Literal("5 km", datatype=CDT.length)
-b = Literal("200 m", datatype=CDT.length)
+from rdflib_ucum.quantity import UCUMQuantity
 
-c = a + b           # Literal("5.2 km", datatype=CDT.length)
-d = a - b           # Literal("4.8 km", datatype=CDT.length)
-a > b               # True  (unit-aware)
-a.eq(b)             # False (value-aware SPARQL equality)
+q = UCUMQuantity("3.6 km/h")
+q.magnitude    # 3.6
+q.ucum_unit    # 'km/h'
+
+q.to("m/s").magnitude                                          # 1.0
+UCUMQuantity("1 eV").to_si().magnitude                         # 1.602176634e-19
+UCUMQuantity("1 N").same_dimension(UCUMQuantity("1 kg.m/s2"))  # True
 ```
 
-### SPARQL: Native Operators
+Arithmetic tracks and transforms physical dimensions through Pint, producing compound units automatically:
 
 ```python
-from rdflib import Graph, URIRef, Namespace
+# Addition and subtraction - cross-unit, result in left operand's unit
+UCUMQuantity("5 km")  + UCUMQuantity("200 m")    # 5.2 km
+UCUMQuantity("1 h")   + UCUMQuantity("30 min")   # 1.5 h
+UCUMQuantity("1 kPa") + UCUMQuantity("500 Pa")   # 1.5 kPa
 
-CDT = Namespace("https://w3id.org/cdt/")
-EX = Namespace("http://example.org/")
+# Multiplication and division - dimension-changing
+UCUMQuantity("100 m") / UCUMQuantity("10 s")     # 10.0 m/s
+UCUMQuantity("2 kg")  * UCUMQuantity("3 m/s2")   # 6.0 kg.m/s2  (== 6 N)
+UCUMQuantity("10 N")  * UCUMQuantity("5 m")      # 50.0 N.m     (== 50 J)
+UCUMQuantity("100 J") / UCUMQuantity("10 s")     # 10.0 J/s     (== 10 W)
+UCUMQuantity("10 V")  * UCUMQuantity("2 A")      # 20.0 V.A     (== 20 W)
+UCUMQuantity("10 V")  / UCUMQuantity("2 A")      # 5.0 V/A      (== 5 Ohm)
 
-g = Graph()
-g.bind("cdt", "https://w3id.org/cdt/")
-g.add((EX.bridge, EX.length, Literal("1.2 km", datatype=CDT.length)))
-g.add((EX.road,   EX.length, Literal("500 m",  datatype=CDT.length)))
-
-# Equality (unit-aware)
-results = g.query('''
-    PREFIX cdt: <https://w3id.org/cdt/>
-    SELECT ?s WHERE {
-        ?s <http://example.org/length> ?len .
-        FILTER(?len = "1200 m"^^cdt:length)
-    }
-''')  # Finds bridge (1.2 km == 1200 m)
-
-# Comparison
-results = g.query('''
-    PREFIX cdt: <https://w3id.org/cdt/>
-    SELECT ?s WHERE {
-        ?s <http://example.org/length> ?len .
-        FILTER(?len > "1 km"^^cdt:length)
-    }
-''')  # Finds bridge
-
-# Arithmetic
-results = g.query('''
-    PREFIX cdt: <https://w3id.org/cdt/>
-    SELECT ?total WHERE {
-        ?s <http://example.org/length> ?a .
-        ?s2 <http://example.org/length> ?b .
-        FILTER(?s != ?s2)
-        BIND(?a + ?b AS ?total)
-    }
-''')
-
-# ORDER BY (unit-aware sorting)
-results = g.query('''
-    SELECT ?s ?len WHERE {
-        ?s <http://example.org/length> ?len .
-    } ORDER BY ?len
-''')  # road (500 m), bridge (1.2 km)
+# Chained physics - kinetic energy: KE = 0.5 * m * v^2
+m  = UCUMQuantity("2 kg")
+v  = UCUMQuantity("3 m/s")
+ke = UCUMQuantity("0.5 1") * m * v * v           # 9.0 J
 ```
 
-### SPARQL: Custom Functions
+UCUM's full notation is supported including SI prefixes, compound units, derived equivalences, and negative exponents:
+
+```python
+UCUMQuantity("1 N")   == UCUMQuantity("1 kg.m/s2")        # True
+UCUMQuantity("1 Pa")  == UCUMQuantity("1 kg/(m.s2)")       # True
+UCUMQuantity("1 Ohm") == UCUMQuantity("1 kg.m2/(A2.s3)")   # True
+UCUMQuantity("1 V")   == UCUMQuantity("1 kg.m2/(A.s3)")    # True
+UCUMQuantity("1 s-1") == UCUMQuantity("1 Hz")              # True
+UCUMQuantity("1 m/s") == UCUMQuantity("1 m.s-1")           # True
+UCUMQuantity("1 MJ")  == UCUMQuantity("1000 kJ")           # True
+```
+
+Incompatible dimensions fail loudly:
+
+```python
+UCUMQuantity("1 m") + UCUMQuantity("1 kg")  # TypeError: incompatible dimensions
+UCUMQuantity("1 m").to("kg")                # pint.DimensionalityError
+```
+
+## SPARQL Support
+
+SPARQL operators work natively on CDT quantity literals with no custom functions needed for comparisons and arithmetic.
+
+```sparql
+PREFIX cdt: <https://w3id.org/cdt/>
+PREFIX ex:  <https://example.org/>
+
+# FILTER with cross-unit comparison - matches "1 km"^^cdt:length because 1 km > 500 m
+SELECT ?sensor WHERE {
+    ?sensor ex:distance ?d .
+    FILTER(?d > "500 m"^^cdt:length)
+}
+```
+
+```sparql
+# ORDER BY across mixed units sorts correctly by physical value
+SELECT ?s ?length WHERE {
+    ?s ex:length ?length .
+}
+ORDER BY ?length
+```
+
+```sparql
+# Arithmetic in BIND - "5 km" + "200 m" produces 5.2 km
+SELECT ?total WHERE {
+    ex:s1 ex:length ?a .
+    ex:s2 ex:length ?b .
+    BIND(?a + ?b AS ?total)
+}
+```
+
+The `cdt:sameDimension` function filters by physical compatibility regardless of the unit stored:
 
 ```sparql
 PREFIX cdt: <https://w3id.org/cdt/>
 
-# Convert units
-BIND(cdt:convert(?len, "m"^^cdt:ucumunit) AS ?meters)
-
-# Convert to SI base units
-BIND(cdt:toSI(?len) AS ?si)
-
-# Extract value and unit
-BIND(cdt:getValue(?len) AS ?val)   # → xsd:double
-BIND(cdt:getUnit(?len) AS ?unit)   # → xsd:string
-
-# Check dimension compatibility
-FILTER(cdt:sameDimension(?a, ?b))
+SELECT ?s WHERE {
+    ?s ex:measurement ?v .
+    FILTER(cdt:sameDimension(?v, "1 m"^^cdt:length))
+}
 ```
 
-### Unit Conversion (Python API)
+## RDF Roundtrip
+
+CDT literals survive serialization and deserialization cycles with their lexical form and type fully preserved:
 
 ```python
-from rdflib_ucum import UCUMQuantity
+from rdflib import Graph, Literal, Namespace
+import rdflib_ucum
+from rdflib_ucum import CDT
 
-q = UCUMQuantity("1.5 km")
-q.to("m")       # UCUMQuantity(1500.0, 'm')
-q.to_si()       # UCUMQuantity(1500.0, 'm')
-q.magnitude     # 1.5
-q.ucum_unit     # 'km'
+EX = Namespace("https://example.org/")
+g  = Graph()
+g.add((EX.sensor, EX.speed, Literal("3.6 km/h", datatype=CDT.speed)))
+
+g2  = Graph().parse(data=g.serialize(format="turtle"), format="turtle")
+val = list(g2.objects(EX.sensor, EX.speed))[0].toPython()
+
+assert val.magnitude == 3.6
+assert val.ucum_unit == "km/h"
 ```
 
-## Supported Datatypes (35 total)
+## Testing the Installation
 
-### Generic Types
-- `cdt:ucum` — accepts any UCUM unit  (`"1.2 km"^^cdt:ucum`)
-- `cdt:ucumunit` — unit only, no value (`"km"^^cdt:ucumunit`)
+Create a fresh virtual environment in any folder on your machine:
 
-### 33 Dimension-Specific Types
-`cdt:acceleration`, `cdt:amountOfSubstance`, `cdt:angle`, `cdt:area`,
-`cdt:catalyticActivity`, `cdt:dimensionless`, `cdt:electricCapacitance`,
-`cdt:electricCharge`, `cdt:electricConductance`, `cdt:electricCurrent`,
-`cdt:electricInductance`, `cdt:electricPotential`, `cdt:electricResistance`,
-`cdt:energy`, `cdt:force`, `cdt:frequency`, `cdt:illuminance`, `cdt:length`,
-`cdt:luminousFlux`, `cdt:luminousIntensity`, `cdt:magneticFlux`,
-`cdt:magneticFluxDensity`, `cdt:mass`, `cdt:power`, `cdt:pressure`,
-`cdt:radiationDoseAbsorbed`, `cdt:radiationDoseEffective`, `cdt:radioactivity`,
-`cdt:solidAngle`, `cdt:speed`, `cdt:temperature`, `cdt:time`, `cdt:volume`
-
-## Architecture
-
-```
-import rdflib_ucum  →  auto-registers everything:
-
-1. register_datatypes()          ← bind() for all 35 CDT types
-   │  Literal("1.2 km", datatype=CDT.length).toPython()
-   │  → UCUMQuantity(1.2, 'km')
-   │
-   │  This enables:
-   │  • Literal.eq()    → UCUMQuantity.__eq__  (SPARQL =)
-   │  • Literal.__gt__  → UCUMQuantity.__gt__  (ORDER BY)
-   │  • Literal.__add__ → UCUMQuantity.__add__ (Python +)
-
-2. install_sparql_patches()      ← monkey-patches SPARQL engine
-   │  • RelationalExpression  → allows <, >, <=, >= for CDT types
-   │  • AdditiveExpression    → allows +, - for CDT types
-   │  • MultiplicativeExpression → allows *, / for CDT types
-
-3. register_sparql_functions()   ← utility SPARQL functions
-      • cdt:convert, cdt:toSI, cdt:getValue, cdt:getUnit, cdt:sameDimension
+```bash
+python -m venv venv
+source venv/bin/activate        # on Windows: venv\Scripts\activate
 ```
 
-## Tech Stack
+Install directly from GitHub:
 
+```bash
+pip install "rdflib-ucum[dev] @ git+https://github.com/Irfan-Ullah-cs/rdflib-ucum.git"
 ```
-rdflib-ucum
-  ├── rdflib    → RDF framework
-  └── pint      → Quantity arithmetic, comparison, conversion
-  (optional: ucumvert → full UCUM grammar parser + Pint bridge)
+
+Verify it installed correctly:
+
+```bash
+python -c "import rdflib_ucum; print(rdflib_ucum.__version__)"
+```
+
+To run the full test suite, clone the repo and run pytest from inside it:
+
+```bash
+git clone https://github.com/Irfan-Ullah-cs/rdflib-ucum.git
+cd rdflib-ucum
+pip install -e ".[dev]"
+pytest
 ```
 
 ## References
 
-- [CDT namespace](https://w3id.org/cdt/)
-- [UCUM specification](https://ucum.org/ucum)
-- [jena-ucum-lib (Java equivalent)](https://github.com/Irfan-Ullah-cs/jena-ucum)
-- [Lefrançois & Zimmermann (2016)](https://doi.org/10.1007/978-3-319-34129-3_22) — Supporting Arbitrary Custom Datatypes in RDF and SPARQL
+- Lefrançois, M. & Zimmermann, A. (2018). *The Unified Code for Units of Measure in RDF: cdt:ucum and other UCUM Datatypes*. ESWC 2018 (Demo).
+- Lefrançois, M. & Zimmermann, A. (2016). *Supporting Arbitrary Custom Datatypes in RDF and SPARQL*. ESWC 2016.
+- [CDT specification v4](https://ci.mines-stetienne.fr/lindt/v4/custom_datatypes) - formal definition of the `cdt:ucum` datatype and related quantity types
+- [UCUM specification](https://ucum.org/ucum) - the standard for unit codes
+- [Pint documentation](https://pint.readthedocs.io/) - dimensional analysis and unit conversion engine
+- [ucumvert](https://github.com/dalito/ucumvert) - UCUM parser and Pint registry bridge
