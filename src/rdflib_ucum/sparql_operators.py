@@ -34,6 +34,7 @@ from .quantity import UCUMQuantity
 _orig_relational = None
 _orig_additive = None
 _orig_multiplicative = None
+_orig_val = None
 _installed = False
 
 
@@ -62,6 +63,8 @@ def _patched_RelationalExpression(e, ctx) -> Literal:
         and isinstance(other, Literal)
         and is_cdt_datatype(expr.datatype)
         and is_cdt_datatype(other.datatype)
+        and not expr.ill_typed  
+        and not other.ill_typed 
     ):
         ops = {
             ">":  lambda x, y: x.__gt__(y),
@@ -212,6 +215,11 @@ def _patched_MultiplicativeExpression(e, ctx) -> Literal:
 
     return _orig_multiplicative(e, ctx)
 
+def _patched_val(v):
+    if isinstance(v, Literal) and is_cdt_datatype(v.datatype) and v.ill_typed:
+        return (4, v)
+    return _orig_val(v)
+
 
 # ---------------------------------------------------------------------------
 # Install / Uninstall
@@ -221,14 +229,17 @@ def install_sparql_patches() -> None:
     """
     Monkey-patch RDFLib's SPARQL operator handlers to support CDT types.
 
-    We must patch TWO places:
+    We must patch THREE places:
     1. ``operators.XXXExpression`` — the module-level function
     2. ``parser.XXXExpression.evalfn`` — the Comp object that stores
        function references at module load time via ``Comp.setEvalFn()``.
+    3. ``evaluate._val`` — the sort key function used by ORDER BY.
+       Must patch evaluate._val directly because evaluate.py imports _val
+       with ``from evalutils import _val``, creating its own local reference.
 
     Safe to call multiple times.
     """
-    global _orig_relational, _orig_additive, _orig_multiplicative, _installed
+    global _orig_relational, _orig_additive, _orig_multiplicative, _orig_val, _installed
 
     if _installed:
         return
@@ -256,10 +267,15 @@ def install_sparql_patches() -> None:
     except ImportError:
         pass
 
+    # Patch 3: _val in evaluate.py for ORDER BY sort key
+    from rdflib.plugins.sparql import evaluate as _evaluate
+    _orig_val = _evaluate._val
+    _evaluate._val = _patched_val
+
 
 def uninstall_sparql_patches() -> None:
     """Remove the monkey-patches and restore original behavior."""
-    global _orig_relational, _orig_additive, _orig_multiplicative, _installed
+    global _orig_relational, _orig_additive, _orig_multiplicative, _orig_val, _installed
 
     if not _installed:
         return
@@ -283,6 +299,11 @@ def uninstall_sparql_patches() -> None:
     except ImportError:
         pass
 
+    if _orig_val is not None:
+        from rdflib.plugins.sparql import evaluate as _evaluate
+        _evaluate._val = _orig_val
+
     _orig_relational = None
     _orig_additive = None
     _orig_multiplicative = None
+    _orig_val = None
