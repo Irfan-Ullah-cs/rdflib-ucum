@@ -1,0 +1,39 @@
+# Virtual environments
+.venv/
+.env/
+env/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary / scratch test files in tests/
+tests/test.py
+

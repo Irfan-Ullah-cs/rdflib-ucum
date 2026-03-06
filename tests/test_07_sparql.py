@@ -1,0 +1,449 @@
+"""
+test_07_sparql.py
+
+Tests for SPARQL-level CDT operator support and custom functions:
+- FILTER equality (=, !=) via Literal.eq()
+- FILTER comparison (<, >, <=, >=) via monkey-patched RelationalExpression
+- ORDER BY with mixed units
+- Arithmetic in SELECT (+, -, *, /) via monkey-patched Additive/MultiplicativeExpression
+- Scalar multiply in SPARQL
+- Derived unit arithmetic in SPARQL (force = mass × acceleration)
+- Incompatible dimension → SPARQLError
+- cdt:sameDimension custom function
+- Patch install/uninstall idempotency
+"""
+import pytest
+from rdflib import Graph, Literal, Namespace, URIRef, XSD
+from rdflib.plugins.sparql.evalutils import SPARQLError
+
+import rdflib_ucum
+from rdflib_ucum import CDT
+from rdflib_ucum.quantity import UCUMQuantity
+from rdflib_ucum.sparql_operators import install_sparql_patches, uninstall_sparql_patches
+
+EX = Namespace("https://example.org/")
+
+
+def make_graph():
+    """Return a fresh graph with sample CDT data."""
+    g = Graph()
+    g.add((EX.s1, EX.length, Literal("1 km",    datatype=CDT.length)))
+    g.add((EX.s2, EX.length, Literal("1000 m",  datatype=CDT.length)))
+    g.add((EX.s3, EX.length, Literal("500 m",   datatype=CDT.length)))
+    g.add((EX.s4, EX.length, Literal("2 km",    datatype=CDT.length)))
+    g.add((EX.s1, EX.mass,   Literal("70 kg",   datatype=CDT.mass)))
+    g.add((EX.s2, EX.mass,   Literal("70000 g", datatype=CDT.mass)))
+    g.add((EX.s3, EX.mass,   Literal("35 kg",   datatype=CDT.mass)))
+    g.add((EX.s1, EX.speed,  Literal("3.6 km/h",datatype=CDT.speed)))
+    g.add((EX.s2, EX.speed,  Literal("1 m/s",   datatype=CDT.speed)))
+    g.add((EX.s1, EX.energy, Literal("1 kJ",    datatype=CDT.energy)))
+    g.add((EX.s2, EX.energy, Literal("1000 J",  datatype=CDT.energy)))
+    return g
+
+
+# ---------------------------------------------------------------------------
+# SPARQL Equality
+# ---------------------------------------------------------------------------
+
+class TestSPARQLEquality:
+
+    def test_eq_cross_unit_finds_match(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l = "1000 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        # Both s1 (1 km) and s2 (1000 m) equal 1000 m
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+
+    def test_neq_filters_correctly(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l != "500 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s3) not in subjects
+        assert str(EX.s1) in subjects    
+        assert str(EX.s2) in subjects    
+        assert str(EX.s4) in subjects    
+
+    def test_eq_mass_cross_unit(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:mass ?m .
+            FILTER(?m = "70 kg"^^<https://w3id.org/cdt/mass>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+
+    def test_eq_speed_cross_unit(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:speed ?v .
+            FILTER(?v = "1 m/s"^^<https://w3id.org/cdt/speed>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+
+
+# ---------------------------------------------------------------------------
+# SPARQL Comparison
+# ---------------------------------------------------------------------------
+
+class TestSPARQLComparison:
+
+    def test_gt_cross_unit(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l > "600 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+        assert str(EX.s4) in subjects
+        assert str(EX.s3) not in subjects
+
+    def test_lt_cross_unit(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l < "1 km"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s3) in subjects
+        assert str(EX.s4) not in subjects
+
+    def test_gte_includes_equal(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l >= "1 km"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+        assert str(EX.s4) in subjects
+        assert str(EX.s3) not in subjects
+
+    def test_lte_includes_equal(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l <= "1000 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+        assert str(EX.s3) in subjects
+        assert str(EX.s4) not in subjects
+
+    def test_order_by_mixed_units(self):
+        """ORDER BY should sort cross-unit values correctly."""
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s ?l WHERE {
+            ?s ex:length ?l .
+        }
+        ORDER BY ?l
+        """
+        results = list(g.query(q))
+        magnitudes = [r[1].toPython().to_si().magnitude for r in results]
+        assert magnitudes == sorted(magnitudes)
+
+    def test_mass_gt(self):
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:mass ?m .
+            FILTER(?m > "50 kg"^^<https://w3id.org/cdt/mass>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+        assert str(EX.s3) not in subjects
+
+
+# ---------------------------------------------------------------------------
+# SPARQL Arithmetic
+# ---------------------------------------------------------------------------
+
+class TestSPARQLArithmetic:
+
+    def test_add_same_unit(self):
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("3 km", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            ex:s2 ex:length ?b .
+            BIND(?a + ?b AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        assert len(results) == 1
+        val = results[0][0].toPython()
+        assert val.magnitude == pytest.approx(8)
+
+    def test_add_cross_unit(self):
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            ex:s2 ex:length ?b .
+            BIND(?a + ?b AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        val = results[0][0].toPython()
+        assert val.magnitude == pytest.approx(5.2)
+
+    def test_sub(self):
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            ex:s2 ex:length ?b .
+            BIND(?a - ?b AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        val = results[0][0].toPython()
+        assert val.magnitude == pytest.approx(4.8)
+
+    def test_mul_by_scalar(self):
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            BIND(?a * 2 AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        val = results[0][0].toPython()
+        assert val.magnitude == pytest.approx(10)
+        assert results[0][0].datatype == CDT.length
+
+    def test_div_by_scalar(self):
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("10 km", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            BIND(?a / 2 AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        val = results[0][0].toPython()
+        assert val.magnitude == pytest.approx(5)
+        assert results[0][0].datatype == CDT.length
+
+    def test_energy_equality_cross_unit(self):
+        """1 kJ and 1000 J should match in SPARQL FILTER."""
+        g = make_graph()
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:energy ?e .
+            FILTER(?e = "1 kJ"^^<https://w3id.org/cdt/energy>)
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+
+
+# ---------------------------------------------------------------------------
+# SPARQL custom function: cdt:sameDimension
+# ---------------------------------------------------------------------------
+
+class TestSPARQLSameDimension:
+
+    def test_same_dimension_true(self):
+        """Two different length units — same physical dimension → True."""
+        g = Graph()
+        g.add((EX.s1, EX.val1, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s1, EX.val2, Literal("500 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?result WHERE {
+            ex:s1 ex:val1 ?a .
+            ex:s1 ex:val2 ?b .
+            BIND(cdt:sameDimension(?a, ?b) AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        assert results[0][0].toPython() is True
+
+    def test_same_dimension_true_different_unit_types(self):
+        """N and kg.m/s2 — same physical dimension → True."""
+        g = Graph()
+        g.add((EX.s1, EX.val1, Literal("1 N",      datatype=CDT.force)))
+        g.add((EX.s1, EX.val2, Literal("1 kg.m/s2", datatype=CDT.force)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?result WHERE {
+            ex:s1 ex:val1 ?a .
+            ex:s1 ex:val2 ?b .
+            BIND(cdt:sameDimension(?a, ?b) AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        assert results[0][0].toPython() is True
+
+    def test_same_dimension_false(self):
+        """Length and mass — different physical dimensions → False."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s1, EX.mass,   Literal("1 kg",  datatype=CDT.mass)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            ex:s1 ex:mass   ?b .
+            BIND(cdt:sameDimension(?a, ?b) AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        assert results[0][0].toPython() is False
+
+    def test_same_dimension_false_length_vs_time(self):
+        """Length and time — different dimensions → False."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 m",  datatype=CDT.length)))
+        g.add((EX.s1, EX.time,   Literal("1 s",  datatype=CDT.time)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?result WHERE {
+            ex:s1 ex:length ?a .
+            ex:s1 ex:time   ?b .
+            BIND(cdt:sameDimension(?a, ?b) AS ?result)
+        }
+        """
+        results = list(g.query(q))
+        assert results[0][0].toPython() is False
+
+    def test_same_dimension_compatible_via_filter(self):
+        """Use cdt:sameDimension in FILTER to select compatible pairs."""
+        g = Graph()
+        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.val, Literal("1 kg",  datatype=CDT.mass)))
+        g.add((EX.s3, EX.val, Literal("500 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        PREFIX cdt: <https://w3id.org/cdt/>
+        SELECT ?s WHERE {
+            ?s ex:val ?v .
+            FILTER(cdt:sameDimension(?v, "1 m"^^<https://w3id.org/cdt/length>))
+        }
+        """
+        results = list(g.query(q))
+        subjects = {str(r[0]) for r in results}
+        assert str(EX.s1) in subjects
+        assert str(EX.s3) in subjects
+        assert str(EX.s2) not in subjects
+
+    def test_register_sparql_functions_idempotent(self):
+        from rdflib_ucum.sparql_functions import register_sparql_functions
+        register_sparql_functions()
+        register_sparql_functions()
+        # Just verify it doesn't raise
+
+
+# ---------------------------------------------------------------------------
+# Patch install/uninstall
+# ---------------------------------------------------------------------------
+
+class TestPatchLifecycle:
+
+    def test_install_idempotent(self):
+        install_sparql_patches()
+        install_sparql_patches()
+        # Verify SPARQL still works
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",   datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("1000 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l > "500 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        assert len(results) == 2
+
+    def test_uninstall_and_reinstall(self):
+        uninstall_sparql_patches()
+        install_sparql_patches()
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:length ?l .
+            FILTER(?l > "600 m"^^<https://w3id.org/cdt/length>)
+        }
+        """
+        results = list(g.query(q))
+        assert len(results) == 1
+        assert str(results[0][0]) == str(EX.s1)

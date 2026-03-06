@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rdflib-ucum"
+version = "0.1.0"
+description = "UCUM custom datatypes for RDFLib with unit-aware equality, comparison, arithmetic, and SPARQL operator support"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.9"
+authors = [
+    {name = "Irfan Ullah"},
+]
+keywords = ["rdf", "rdflib", "ucum", "units", "quantities", "sparql"]
+dependencies = [
+    "rdflib>=7.0.0",
+    "pint>=0.23",
+    "ucumvert",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
