@@ -409,6 +409,163 @@ class TestSPARQLSameDimension:
 
 
 # ---------------------------------------------------------------------------
+# ORDER BY with ill-typed literals
+# ---------------------------------------------------------------------------
+
+class TestOrderByIllTyped:
+
+    def test_order_by_valid_only(self):
+        """Valid CDT literals sort correctly by value."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("2 km",   datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("500 m",  datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("1500 m", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE { ?s ex:length ?l . } ORDER BY ?l
+        """
+        results = [str(r[0]) for r in g.query(q)]
+        assert results == [str(EX.s2), str(EX.s3), str(EX.s1)]
+
+    def test_order_by_ill_typed_pushed_to_end(self):
+        """Ill-typed CDT literals must appear after valid ones in ORDER BY."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY ?l
+        """
+        results = list(g.query(q))
+        # Last result must be the ill-typed one
+        assert str(results[-1][0]) == str(EX.s3)
+        # First two must be valid and sorted ascending
+        si_vals = [r[1].toPython().to_si().magnitude for r in results[:2]]
+        assert si_vals == sorted(si_vals)
+
+    def test_order_by_desc_ill_typed_still_at_end(self):
+        """With DESC, ill-typed literals appear at the beginning (sort key reversal)."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY DESC(?l)
+        """
+        results = list(g.query(q))
+        # With DESC, ill-typed (sort key 4) appears first after reversal
+        assert str(results[0][0]) == str(EX.s3)
+        # Remaining two are valid and sorted descending
+        si_vals = [r[1].toPython().to_si().magnitude for r in results[1:]]
+        assert si_vals == sorted(si_vals, reverse=True)
+
+    def test_order_by_multiple_ill_typed(self):
+        """Multiple ill-typed literals all pushed to end."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",   datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("bad1",   datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("500 m",  datatype=CDT.length)))
+        g.add((EX.s4, EX.length, Literal("bad2",   datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY ?l
+        """
+        results = list(g.query(q))
+        ill_typed_subjects = {str(EX.s2), str(EX.s4)}
+        # Last two must be the ill-typed ones
+        last_two = {str(r[0]) for r in results[-2:]}
+        assert last_two == ill_typed_subjects
+
+
+# ---------------------------------------------------------------------------
+# Aggregates: SUM, AVG
+# ---------------------------------------------------------------------------
+
+class TestSPARQLAggregates:
+
+    def test_sum_same_unit(self):
+        """SUM of valid CDT literals returns correct magnitude."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        assert len(results) == 1
+        assert float(str(results[0][0])) == pytest.approx(6.0)
+
+    def test_sum_skips_ill_typed(self):
+        """SUM silently skips ill-typed literals and sums only valid ones."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("2 km",  datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        g.add((EX.s4, EX.length, Literal("3 km",  datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        # 1+2+3 = 6, ill-typed skipped
+        assert float(str(results[0][0])) == pytest.approx(6.0)
+
+    def test_sum_all_ill_typed_returns_zero(self):
+        """SUM with all ill-typed literals returns 0 (empty sum)."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("bad1", datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("bad2", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        assert float(str(results[0][0])) == pytest.approx(0.0)
+
+    def test_avg_valid_only(self):
+        """AVG of valid CDT literals returns correct magnitude."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        assert float(str(results[0][0])) == pytest.approx(2.0)
+
+    def test_avg_skips_ill_typed(self):
+        """AVG silently skips ill-typed literals."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("2 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("4 km",  datatype=CDT.length)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        # avg(2, 4) = 3, ill-typed skipped
+        assert float(str(results[0][0])) == pytest.approx(3.0)
+
+    def test_count_includes_ill_typed(self):
+        """COUNT counts all bound values including ill-typed (by design)."""
+        g = Graph()
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.length, Literal("bad",   datatype=CDT.length)))
+        q = """
+        PREFIX ex: <https://example.org/>
+        SELECT (COUNT(?l) AS ?n) WHERE { ?s ex:length ?l . }
+        """
+        results = list(g.query(q))
+        assert int(str(results[0][0])) == 2
+
+# ---------------------------------------------------------------------------
 # Patch install/uninstall
 # ---------------------------------------------------------------------------
 

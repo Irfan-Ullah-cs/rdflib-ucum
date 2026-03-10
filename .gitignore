@@ -36,4 +36,5 @@ Thumbs.db
 
 # Temporary / scratch test files in tests/
 tests/test.py
+tests/demo.py
 
