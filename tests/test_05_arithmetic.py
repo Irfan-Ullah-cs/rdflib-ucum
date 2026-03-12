@@ -16,10 +16,8 @@ import rdflib_ucum
 from rdflib_ucum.quantity import UCUMQuantity
 
 
-# ---------------------------------------------------------------------------
+   
 # Addition and Subtraction
-# ---------------------------------------------------------------------------
-
 class TestAddition:
 
     def test_add_same_unit(self):
@@ -93,10 +91,8 @@ class TestSubtraction:
         assert result is NotImplemented
 
 
-# ---------------------------------------------------------------------------
+   
 # Scalar Multiplication and Division
-# ---------------------------------------------------------------------------
-
 class TestScalarOperations:
 
     def test_mul_by_int(self):
@@ -130,10 +126,8 @@ class TestScalarOperations:
         assert result is NotImplemented
 
 
-# ---------------------------------------------------------------------------
+   
 # Dimension-changing Multiplication and Division (complex Pint cases)
-# ---------------------------------------------------------------------------
-
 class TestDimensionChangingArithmetic:
 
     def test_area_from_length_times_length(self):
@@ -225,10 +219,8 @@ class TestDimensionChangingArithmetic:
         assert result.ucum_unit == "V/A"
 
 
-# ---------------------------------------------------------------------------
+   
 # Unary operators
-# ---------------------------------------------------------------------------
-
 class TestUnaryOperators:
 
     def test_neg(self):

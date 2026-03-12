@@ -27,10 +27,7 @@ def roundtrip(g: Graph, fmt: str) -> Graph:
     return g2
 
 
-# ---------------------------------------------------------------------------
 # Turtle roundtrip
-# ---------------------------------------------------------------------------
-
 class TestTurtleRoundtrip:
 
     def test_length_turtle(self):
@@ -125,10 +122,8 @@ class TestTurtleRoundtrip:
             assert isinstance(obj.toPython(), UCUMQuantity)
 
 
-# ---------------------------------------------------------------------------
+   
 # N-Triples roundtrip
-# ---------------------------------------------------------------------------
-
 class TestNTriplesRoundtrip:
 
     def test_length_ntriples(self):
@@ -162,10 +157,8 @@ class TestNTriplesRoundtrip:
         assert val.magnitude == pytest.approx(-10)
 
 
-# ---------------------------------------------------------------------------
+   
 # Value preservation after roundtrip
-# ---------------------------------------------------------------------------
-
 class TestValuePreservationAfterRoundtrip:
 
     def test_equality_preserved_after_turtle_roundtrip(self):
@@ -198,10 +191,8 @@ class TestValuePreservationAfterRoundtrip:
         assert str(results[0][0]) == str(EX.s1)
 
 
-# ---------------------------------------------------------------------------
+   
 # All 33 CDT types roundtrip smoke test
-# ---------------------------------------------------------------------------
-
 class TestAllTypesRoundtrip:
 
     @pytest.mark.parametrize("lexical,datatype", [

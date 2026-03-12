@@ -16,10 +16,8 @@ from .quantity import UCUMQuantity
 from .unit import UCUMUnit
 
 
-# ---------------------------------------------------------------------------
+   
 # Constructor / Lexicalizer functions  (passed to bind())
-# ---------------------------------------------------------------------------
-
 def _parse_quantity(lexical: str) -> UCUMQuantity:
     """Constructor: UCUM lexical string → UCUMQuantity."""
     return UCUMQuantity(lexical)
@@ -40,10 +38,8 @@ def _serialize_unit(u: UCUMUnit) -> str:
     return u.to_lexical()
 
 
-# ---------------------------------------------------------------------------
+   
 # Registration
-# ---------------------------------------------------------------------------
-
 _registered = False
 
 

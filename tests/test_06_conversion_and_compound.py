@@ -21,10 +21,8 @@ from rdflib_ucum import CDT
 from rdflib import Literal
 
 
-# ---------------------------------------------------------------------------
+   
 # to() — explicit unit conversion
-# ---------------------------------------------------------------------------
-
 class TestUnitConversion:
 
     def test_km_to_m(self):
@@ -99,10 +97,8 @@ class TestUnitConversion:
             UCUMQuantity("1 s").to("m")
 
 
-# ---------------------------------------------------------------------------
+   
 # to_si() — SI base unit conversion
-# ---------------------------------------------------------------------------
-
 class TestToSI:
 
     def test_km_to_si(self):
@@ -139,10 +135,8 @@ class TestToSI:
         assert result.magnitude == pytest.approx(1.602176634e-19, rel=1e-6)
 
 
-# ---------------------------------------------------------------------------
+   
 # Compound unit parsing and dimension identity
-# ---------------------------------------------------------------------------
-
 class TestCompoundUnits:
 
     def test_parse_m_per_s(self):
@@ -220,10 +214,8 @@ class TestCompoundUnits:
         assert v == c
 
 
-# ---------------------------------------------------------------------------
+   
 # Negative exponent / inverse notation
-# ---------------------------------------------------------------------------
-
 class TestNegativeExponentUnits:
 
     def test_s_minus1_equals_hz(self):
@@ -245,10 +237,8 @@ class TestNegativeExponentUnits:
         assert a == b
 
 
-# ---------------------------------------------------------------------------
+   
 # Prefix on compound units
-# ---------------------------------------------------------------------------
-
 class TestPrefixOnCompound:
 
     def test_kPa_conversion(self):
@@ -268,10 +258,8 @@ class TestPrefixOnCompound:
         assert result.magnitude == pytest.approx(1.0)
 
 
-# ---------------------------------------------------------------------------
+   
 # All 33 CDT dimension types — to_si() smoke test
-# ---------------------------------------------------------------------------
-
 class TestAllDimensionTypesToSI:
 
     @pytest.mark.parametrize("lexical,datatype", [

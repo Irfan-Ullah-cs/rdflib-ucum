@@ -15,10 +15,8 @@ from rdflib_ucum import CDT
 from rdflib_ucum.quantity import UCUMQuantity
 
 
-# ---------------------------------------------------------------------------
+   
 # Python-level comparisons: UCUMQuantity operators
-# ---------------------------------------------------------------------------
-
 class TestLessThan:
 
     def test_lt_same_unit(self):
@@ -146,10 +144,8 @@ class TestCompoundAndDerivedComparison:
         assert UCUMQuantity("1 kJ") > UCUMQuantity("1 J")
 
 
-# ---------------------------------------------------------------------------
+   
 # RDFLib Literal-level comparisons (Python __gt__ etc.)
-# ---------------------------------------------------------------------------
-
 class TestLiteralComparison:
 
     def test_literal_gt_same_unit(self):

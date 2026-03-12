@@ -14,11 +14,7 @@ import rdflib_ucum
 from rdflib_ucum import CDT
 from rdflib_ucum.quantity import UCUMQuantity
 
-
-# ---------------------------------------------------------------------------
 # Python-level equality: UCUMQuantity.__eq__
-# ---------------------------------------------------------------------------
-
 class TestUCUMQuantityEquality:
 
     def test_same_unit_same_value(self):
@@ -92,10 +88,8 @@ class TestUCUMQuantityEquality:
         assert q.__eq__(1.0) is NotImplemented
 
 
-# ---------------------------------------------------------------------------
+ 
 # RDFLib Literal.eq() delegation
-# ---------------------------------------------------------------------------
-
 class TestLiteralEquality:
 
     def test_eq_same_unit(self):
@@ -146,10 +140,8 @@ class TestLiteralEquality:
         assert a.eq(b)
 
 
-# ---------------------------------------------------------------------------
+ 
 # Hash consistency
-# ---------------------------------------------------------------------------
-
 class TestHashConsistency:
 
     def test_equal_quantities_have_equal_hash(self):

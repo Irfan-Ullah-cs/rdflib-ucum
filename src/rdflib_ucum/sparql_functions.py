@@ -37,7 +37,6 @@ def _fn_sameDimension(a_lit: Literal, b_lit: Literal) -> Literal:
 
 
 # Registration
-
 _registered = False
 
 

@@ -80,7 +80,7 @@ class UCUMQuantity:
         self._pint_qty = ureg.Quantity(value, cached_parse_unit(unit))
         self._ucum_unit = unit
 
-    # ---- Properties -------------------------------------------------------
+    # ---- Properties   ----------
 
     @property
     def magnitude(self) -> float:
@@ -102,7 +102,7 @@ class UCUMQuantity:
     def dimensionality(self) -> dict:
         return dict(self._pint_qty.dimensionality)
 
-    # ---- Serialization ----------------------------------------------------
+    # ---- Serialization   -------
 
     def to_lexical(self) -> str:
         """Serialize back to UCUM lexical form: ``"1.2 km"``."""
@@ -119,7 +119,7 @@ class UCUMQuantity:
     def __repr__(self) -> str:
         return f"UCUMQuantity({self._pint_qty.magnitude!r}, '{self._ucum_unit}')"
 
-    # ---- Unit conversion --------------------------------------------------
+    # ---- Unit conversion   -----
 
     def to(self, target_ucum_unit: str) -> UCUMQuantity:
         """Convert to another compatible UCUM unit."""

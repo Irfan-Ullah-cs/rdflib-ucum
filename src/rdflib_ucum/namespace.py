@@ -9,9 +9,8 @@ from rdflib import Namespace, URIRef
 CDT_NS = "https://w3id.org/cdt/"
 CDT = Namespace(CDT_NS)
 
-# ---------------------------------------------------------------------------
+ 
 # All 35 datatype URIs  (33 quantity types + ucum + ucumunit)
-# ---------------------------------------------------------------------------
 
 # Generic UCUM types (accept any UCUM unit)
 ucum = CDT.ucum                                     # "value unit"^^cdt:ucum
@@ -52,9 +51,8 @@ temperature = CDT.temperature
 time = CDT.time
 volume = CDT.volume
 
-# ---------------------------------------------------------------------------
+ 
 # Complete list for iteration during registration
-# ---------------------------------------------------------------------------
 
 ALL_QUANTITY_TYPES: list[URIRef] = [
     acceleration, amountOfSubstance, angle, area, catalyticActivity,

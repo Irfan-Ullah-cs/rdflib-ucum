@@ -15,11 +15,7 @@ from rdflib_ucum.namespace import ALL_QUANTITY_TYPES, ucum, ucumunit
 from rdflib_ucum.quantity import UCUMQuantity
 from rdflib_ucum.unit import UCUMUnit
 
-
-# ---------------------------------------------------------------------------
 # Valid lexical forms
-# ---------------------------------------------------------------------------
-
 class TestValidLexicalForms:
 
     def test_integer_value(self):
@@ -89,10 +85,8 @@ class TestValidLexicalForms:
         assert q.magnitude == pytest.approx(1.0)
 
 
-# ---------------------------------------------------------------------------
+  
 # Invalid lexical forms
-# ---------------------------------------------------------------------------
-
 class TestInvalidLexicalForms:
 
     def test_missing_unit(self):
@@ -119,11 +113,7 @@ class TestInvalidLexicalForms:
         with pytest.raises(ValueError):
             UCUMQuantity(1.5)  # numeric without unit kwarg
 
-
-# ---------------------------------------------------------------------------
 # RDFLib bind() registration
-# ---------------------------------------------------------------------------
-
 class TestRegistration:
 
     def test_all_33_quantity_types_return_ucum_quantity(self):

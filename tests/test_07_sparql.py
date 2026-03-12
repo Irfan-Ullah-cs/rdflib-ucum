@@ -41,10 +41,8 @@ def make_graph():
     return g
 
 
-# ---------------------------------------------------------------------------
+  
 # SPARQL Equality
-# ---------------------------------------------------------------------------
-
 class TestSPARQLEquality:
 
     def test_eq_cross_unit_finds_match(self):
@@ -108,10 +106,8 @@ class TestSPARQLEquality:
         assert str(EX.s2) in subjects
 
 
-# ---------------------------------------------------------------------------
+  
 # SPARQL Comparison
-# ---------------------------------------------------------------------------
-
 class TestSPARQLComparison:
 
     def test_gt_cross_unit(self):
@@ -206,10 +202,8 @@ class TestSPARQLComparison:
         assert str(EX.s3) not in subjects
 
 
-# ---------------------------------------------------------------------------
+  
 # SPARQL Arithmetic
-# ---------------------------------------------------------------------------
-
 class TestSPARQLArithmetic:
 
     def test_add_same_unit(self):
@@ -307,9 +301,9 @@ class TestSPARQLArithmetic:
         assert str(EX.s2) in subjects
 
 
-# ---------------------------------------------------------------------------
+  
 # SPARQL custom function: cdt:sameDimension
-# ---------------------------------------------------------------------------
+  
 
 class TestSPARQLSameDimension:
 
@@ -408,10 +402,8 @@ class TestSPARQLSameDimension:
         # Just verify it doesn't raise
 
 
-# ---------------------------------------------------------------------------
+  
 # ORDER BY with ill-typed literals
-# ---------------------------------------------------------------------------
-
 class TestOrderByIllTyped:
 
     def test_order_by_valid_only(self):
@@ -479,10 +471,257 @@ class TestOrderByIllTyped:
         assert last_two == ill_typed_subjects
 
 
-# ---------------------------------------------------------------------------
-# Aggregates: SUM, AVG
-# ---------------------------------------------------------------------------
 
+class TestSPARQLUnaryAndMath:
+
+    def _graph_one(self, lexical, datatype=CDT.length):
+        g = Graph()
+        g.add((EX.s1, EX.val, Literal(lexical, datatype=datatype)))
+        return g
+
+    # ── ABS ──────────────────────────────────────────────────────────────────
+
+    def test_abs_positive(self):
+        g = self._graph_one("3.5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(3.5)
+
+    def test_abs_negative(self):
+        g = self._graph_one("-3.5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(3.5)
+
+    def test_abs_preserves_unit(self):
+        g = self._graph_one("-500 m")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        val = res[0][0].toPython()
+        assert val.ucum_unit == "m"
+        assert val.magnitude == pytest.approx(500)
+
+    def test_abs_zero(self):
+        g = self._graph_one("0 m")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(0)
+
+    def test_abs_ill_typed_returns_unbound(self):
+        g = self._graph_one("bad")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0] is None
+
+    # ── CEIL ─────────────────────────────────────────────────────────────────
+
+    def test_ceil_positive_decimal(self):
+        g = self._graph_one("1.2 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+
+    def test_ceil_negative_decimal(self):
+        """CEIL(-1.7) = -1."""
+        g = self._graph_one("-1.7 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(-1.0)
+
+    def test_ceil_whole_number_unchanged(self):
+        g = self._graph_one("3 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(3.0)
+
+    def test_ceil_preserves_datatype(self):
+        g = self._graph_one("1.4 kg", CDT.mass)
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].datatype == CDT.mass
+
+    def test_ceil_ill_typed_returns_unbound(self):
+        g = self._graph_one("bad")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0] is None
+
+    # ── FLOOR ────────────────────────────────────────────────────────────────
+
+    def test_floor_positive_decimal(self):
+        g = self._graph_one("1.9 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(1.0)
+
+    def test_floor_negative_decimal(self):
+        """FLOOR(-1.2) = -2."""
+        g = self._graph_one("-1.2 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(-2.0)
+
+    def test_floor_whole_number_unchanged(self):
+        g = self._graph_one("5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(5.0)
+
+    def test_floor_preserves_datatype(self):
+        g = self._graph_one("9.9 s", CDT.time)
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].datatype == CDT.time
+
+    def test_floor_ill_typed_returns_unbound(self):
+        g = self._graph_one("bad")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0] is None
+
+    # - ROUND
+
+    def test_round_up(self):
+        g = self._graph_one("1.7 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+
+    def test_round_down(self):
+        g = self._graph_one("1.2 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(1.0)
+
+    def test_round_half_up(self):
+        """SPARQL ROUND uses round-half-up: 1.5 → 2."""
+        g = self._graph_one("1.5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+
+    def test_round_negative(self):
+        """ROUND(-1.5) = -1 (round-half-up toward positive infinity)."""
+        g = self._graph_one("-1.5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(-1.0)
+
+    def test_round_preserves_datatype(self):
+        g = self._graph_one("9.6 kg", CDT.mass)
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].datatype == CDT.mass
+
+    def test_round_ill_typed_returns_unbound(self):
+        g = self._graph_one("bad")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0] is None
+
+    # ── Unary minus ──────────────────────────────────────────────────────────
+
+    def test_unary_minus_positive(self):
+        g = self._graph_one("5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(-5.0)
+
+    def test_unary_minus_negative_becomes_positive(self):
+        g = self._graph_one("-5 km")
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        assert res[0][0].toPython().magnitude == pytest.approx(5.0)
+
+    def test_unary_minus_preserves_unit(self):
+        g = self._graph_one("3 kg", CDT.mass)
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
+        """))
+        val = res[0][0].toPython()
+        assert val.ucum_unit == "kg"
+        assert val.magnitude == pytest.approx(-3.0)
+
+    # ── ABS then FILTER ──────────────────────────────────────────────────────
+
+    def test_abs_then_filter(self):
+        """ABS result can be used in a FILTER comparison."""
+        g = Graph()
+        g.add((EX.s1, EX.val, Literal("-1.5 km", datatype=CDT.length)))
+        g.add((EX.s2, EX.val, Literal("0.5 km",  datatype=CDT.length)))
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:val ?v .
+            FILTER(ABS(?v) > "1 km"^^<https://w3id.org/cdt/length>)
+        }
+        """))
+        assert len(res) == 1
+        assert str(res[0][0]) == str(EX.s1)
+
+    def test_negate_then_order_by(self):
+        """ORDER BY on negated values reverses sort order."""
+        g = Graph()
+        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.length)))
+        g.add((EX.s2, EX.val, Literal("2 km",  datatype=CDT.length)))
+        g.add((EX.s3, EX.val, Literal("3 km",  datatype=CDT.length)))
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE { ?s ex:val ?v . }
+        ORDER BY (-?v)
+        """))
+        subjects = [str(r[0]).split('/')[-1] for r in res]
+        assert subjects == ["s3", "s2", "s1"]
+
+  
+# Aggregates: SUM, AVG
 class TestSPARQLAggregates:
 
     def test_sum_same_unit(self):
@@ -565,9 +804,9 @@ class TestSPARQLAggregates:
         results = list(g.query(q))
         assert int(str(results[0][0])) == 2
 
-# ---------------------------------------------------------------------------
+  
 # Patch install/uninstall
-# ---------------------------------------------------------------------------
+  
 
 class TestPatchLifecycle:
 

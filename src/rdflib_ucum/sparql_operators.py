@@ -48,9 +48,8 @@ from rdflib.plugins.sparql.evalutils import SPARQLError
 from .namespace import is_cdt_datatype
 from .quantity import UCUMQuantity
 
-# ---------------------------------------------------------------------------
-# Original references (saved on install, restored on uninstall)
-# ---------------------------------------------------------------------------
+    
+# Original references (saved on install, restored on uninstall)   
 _orig_relational = None
 _orig_additive = None
 _orig_multiplicative = None
@@ -65,10 +64,8 @@ _orig_agg_type_promotion = None
 _installed = False
 
 
-# ---------------------------------------------------------------------------
+    
 # Grammar traversal helper
-# ---------------------------------------------------------------------------
-
 def _find_comp_in_grammar(root, target_name, _visited=None):
     """
     Depth-first search through the pyparsing grammar tree for a ``Comp``
@@ -122,10 +119,8 @@ def _patch_grammar_comp(parser_module, comp_name, new_fn):
     return None
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched RelationalExpression  (handles  <  >  <=  >= )
-# ---------------------------------------------------------------------------
-
 def _patched_RelationalExpression(e, ctx) -> Literal:
     """
     Drop-in replacement for ``operators.RelationalExpression``.
@@ -167,10 +162,8 @@ def _patched_RelationalExpression(e, ctx) -> Literal:
     return _orig_relational(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched AdditiveExpression  (handles  +  - )
-# ---------------------------------------------------------------------------
-
 def _patched_AdditiveExpression(e, ctx) -> Literal:
     """
     Drop-in replacement for ``operators.AdditiveExpression``.
@@ -241,10 +234,8 @@ def _patched_AdditiveExpression(e, ctx) -> Literal:
     return _orig_additive(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched MultiplicativeExpression  (handles  *  / )
-# ---------------------------------------------------------------------------
-
 def _patched_MultiplicativeExpression(e, ctx) -> Literal:
     """
     Drop-in replacement for ``operators.MultiplicativeExpression``.
@@ -322,10 +313,8 @@ def _patched_MultiplicativeExpression(e, ctx) -> Literal:
     return _orig_multiplicative(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Shared helper for unary CDT operations
-# ---------------------------------------------------------------------------
-
 def _cdt_unary(lit, magnitude_op):
     """
     Apply ``magnitude_op`` to the magnitude of a CDT literal, returning a new
@@ -345,10 +334,8 @@ def _cdt_unary(lit, magnitude_op):
     return None
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched UnaryMinus  (handles  -?x )
-# ---------------------------------------------------------------------------
-
 def _patched_UnaryMinus(e, ctx) -> Literal:
     r = _cdt_unary(e.expr, lambda m: -m)
     if r is not None:
@@ -356,10 +343,8 @@ def _patched_UnaryMinus(e, ctx) -> Literal:
     return _orig_unary_minus(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched UnaryPlus  (handles  +?x )
-# ---------------------------------------------------------------------------
-
 def _patched_UnaryPlus(e, ctx) -> Literal:
     r = _cdt_unary(e.expr, lambda m: +m)
     if r is not None:
@@ -367,10 +352,8 @@ def _patched_UnaryPlus(e, ctx) -> Literal:
     return _orig_unary_plus(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched Builtin_ABS  (handles  ABS(?x) )
-# ---------------------------------------------------------------------------
-
 def _patched_Builtin_ABS(e, ctx) -> Literal:
     r = _cdt_unary(e.arg, abs)
     if r is not None:
@@ -378,10 +361,8 @@ def _patched_Builtin_ABS(e, ctx) -> Literal:
     return _orig_abs(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched Builtin_CEIL  (handles  CEIL(?x) )
-# ---------------------------------------------------------------------------
-
 def _patched_Builtin_CEIL(e, ctx) -> Literal:
     r = _cdt_unary(e.arg, lambda m: float(math.ceil(m)))
     if r is not None:
@@ -389,10 +370,8 @@ def _patched_Builtin_CEIL(e, ctx) -> Literal:
     return _orig_ceil(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched Builtin_FLOOR  (handles  FLOOR(?x) )
-# ---------------------------------------------------------------------------
-
 def _patched_Builtin_FLOOR(e, ctx) -> Literal:
     r = _cdt_unary(e.arg, lambda m: float(math.floor(m)))
     if r is not None:
@@ -400,10 +379,8 @@ def _patched_Builtin_FLOOR(e, ctx) -> Literal:
     return _orig_floor(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patched Builtin_ROUND  (handles  ROUND(?x) )
-# ---------------------------------------------------------------------------
-
 def _patched_Builtin_ROUND(e, ctx) -> Literal:
     def _round(m):
         v = float(m)
@@ -415,9 +392,9 @@ def _patched_Builtin_ROUND(e, ctx) -> Literal:
     return _orig_round(e, ctx)
 
 
-# ---------------------------------------------------------------------------
+    
 # Patch 4 — SUM / AVG aggregates
-# ---------------------------------------------------------------------------
+    
 # aggregates.py imports `numeric` and `type_promotion` at module load time as
 # local names, so patching operators.numeric alone has no effect there.
 # We must patch the local references inside the aggregates module.
@@ -445,10 +422,8 @@ def _patched_agg_type_promotion(t1, t2):
     return _orig_agg_type_promotion(t1, t2)
 
 
-# ---------------------------------------------------------------------------
+    
 # Install / Uninstall
-# ---------------------------------------------------------------------------
-
 def install_sparql_patches() -> None:
     """
     Monkey-patch RDFLib's SPARQL operator handlers to support CDT types.
