@@ -521,7 +521,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0] is None
+        assert len(res) == 0
 
     # ── CEIL ─────────────────────────────────────────────────────────────────
 
@@ -564,7 +564,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0] is None
+        assert len(res) == 0
 
     # ── FLOOR ────────────────────────────────────────────────────────────────
 
@@ -607,7 +607,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0] is None
+        assert len(res) == 0
 
     # - ROUND
 
@@ -659,7 +659,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0] is None
+        assert len(res) == 0
 
     # ── Unary minus ──────────────────────────────────────────────────────────
 
@@ -736,7 +736,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         assert len(results) == 1
-        assert float(str(results[0][0])) == pytest.approx(6.0)
+        assert results[0][0].toPython().magnitude == pytest.approx(6.0)
 
     def test_sum_skips_ill_typed(self):
         """SUM silently skips ill-typed literals and sums only valid ones."""
@@ -751,7 +751,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         # 1+2+3 = 6, ill-typed skipped
-        assert float(str(results[0][0])) == pytest.approx(6.0)
+        assert results[0][0].toPython().magnitude == pytest.approx(6.0)
 
     def test_sum_all_ill_typed_returns_zero(self):
         """SUM with all ill-typed literals returns 0 (empty sum)."""
@@ -776,7 +776,7 @@ class TestSPARQLAggregates:
         SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
         """
         results = list(g.query(q))
-        assert float(str(results[0][0])) == pytest.approx(2.0)
+        assert results[0][0].toPython().magnitude == pytest.approx(2.0)
 
     def test_avg_skips_ill_typed(self):
         """AVG silently skips ill-typed literals."""
@@ -790,7 +790,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         # avg(2, 4) = 3, ill-typed skipped
-        assert float(str(results[0][0])) == pytest.approx(3.0)
+        assert results[0][0].toPython().magnitude == pytest.approx(3.0)
 
     def test_count_includes_ill_typed(self):
         """COUNT counts all bound values including ill-typed (by design)."""

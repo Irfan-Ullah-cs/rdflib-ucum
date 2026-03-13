@@ -61,6 +61,11 @@ _orig_floor = None
 _orig_round = None
 _orig_agg_numeric = None
 _orig_agg_type_promotion = None
+_orig_avg_get_value = None
+_orig_Sum_update = None
+_orig_Sum_get_value = None
+_orig_Avg_update = None
+_orig_Avg_get_value = None
 _installed = False
 
 
@@ -422,7 +427,81 @@ def _patched_agg_type_promotion(t1, t2):
     return _orig_agg_type_promotion(t1, t2)
 
 
-    
+# Average.get_value() builds Literal(Decimal/Decimal) with no datatype argument,
+# so CDT datatype is always lost.  Fix: pass datatype through for CDT.
+def _patched_avg_get_value(self):
+    if is_cdt_datatype(self.datatype):
+        if self.counter == 0:
+            return Literal(0)
+        return Literal(self.sum / self.counter, datatype=self.datatype)
+    return _orig_avg_get_value(self)
+
+
+
+# Patch 6 — Sum.update / Sum.get_value
+# Accumulate UCUMQuantity objects so the unit is preserved in the result.
+def _patched_Sum_update(self, row, aggregator):
+    from rdflib.plugins.sparql.aggregates import _eval
+    from rdflib.plugins.sparql.sparql import NotBoundError
+    try:
+        value = _eval(self.expr, row)
+        if isinstance(value, Literal) and is_cdt_datatype(value.datatype):
+            if value.ill_typed:
+                return
+            qty = value.toPython()
+            if isinstance(qty, UCUMQuantity):
+                if self.distinct and value in self.seen:
+                    return
+                self._cdt_acc = getattr(self, '_cdt_acc', None)
+                self._cdt_acc = qty if self._cdt_acc is None else self._cdt_acc + qty
+                self.datatype = value.datatype
+                if self.distinct:
+                    self.seen.add(value)
+                return
+    except NotBoundError:
+        return
+    _orig_Sum_update(self, row, aggregator)
+
+def _patched_Sum_get_value(self):
+    acc = getattr(self, '_cdt_acc', None)
+    if acc is not None and is_cdt_datatype(self.datatype):
+        return Literal(acc.to_lexical(), datatype=self.datatype)
+    return _orig_Sum_get_value(self)
+
+
+# Patch 6 — Average.update / Average.get_value
+def _patched_Avg_update(self, row, aggregator):
+    from rdflib.plugins.sparql.aggregates import _eval
+    from rdflib.plugins.sparql.sparql import NotBoundError
+    try:
+        value = _eval(self.expr, row)
+        if isinstance(value, Literal) and is_cdt_datatype(value.datatype):
+            if value.ill_typed:
+                return
+            qty = value.toPython()
+            if isinstance(qty, UCUMQuantity):
+                if self.distinct and value in self.seen:
+                    return
+                self._cdt_acc = getattr(self, '_cdt_acc', None)
+                self._cdt_acc = qty if self._cdt_acc is None else self._cdt_acc + qty
+                self.datatype = value.datatype
+                self.counter += 1
+                if self.distinct:
+                    self.seen.add(value)
+                return
+    except Exception:
+        return
+    _orig_Avg_update(self, row, aggregator)
+
+def _patched_Avg_get_value(self):
+    acc = getattr(self, '_cdt_acc', None)
+    if acc is not None and is_cdt_datatype(self.datatype):
+        if self.counter == 0:
+            return Literal(0)
+        result = acc / self.counter
+        return Literal(result.to_lexical(), datatype=self.datatype)
+    return _orig_Avg_get_value(self)
+
 # Install / Uninstall
 def install_sparql_patches() -> None:
     """
@@ -447,6 +526,9 @@ def install_sparql_patches() -> None:
     global _orig_unary_minus, _orig_unary_plus
     global _orig_abs, _orig_ceil, _orig_floor, _orig_round
     global _orig_agg_numeric, _orig_agg_type_promotion
+    global _orig_avg_get_value
+    global _orig_Sum_update, _orig_Sum_get_value
+    global _orig_Avg_update, _orig_Avg_get_value
     global _installed
 
     if _installed:
@@ -475,14 +557,22 @@ def install_sparql_patches() -> None:
     operators.Builtin_FLOOR = _patched_Builtin_FLOOR
     operators.Builtin_ROUND = _patched_Builtin_ROUND
 
-    # ---- Patch 4: aggregates module local references ----
+    # ---- Patch 4+5+6: aggregates module ----
     try:
         import rdflib.plugins.sparql.aggregates as _agg
-        import rdflib.plugins.sparql.datatypes as _dt
         _orig_agg_numeric = _agg.numeric
         _orig_agg_type_promotion = _agg.type_promotion
+        _orig_avg_get_value = _agg.Average.get_value
+        _orig_Sum_update = _agg.Sum.update
+        _orig_Sum_get_value = _agg.Sum.get_value
+        _orig_Avg_update = _agg.Average.update
+        _orig_Avg_get_value = _agg.Average.get_value
         _agg.numeric = _patched_agg_numeric
         _agg.type_promotion = _patched_agg_type_promotion
+        _agg.Sum.update = _patched_Sum_update
+        _agg.Sum.get_value = _patched_Sum_get_value
+        _agg.Average.update = _patched_Avg_update
+        _agg.Average.get_value = _patched_Avg_get_value
     except (ImportError, AttributeError):
         pass
 
@@ -520,6 +610,9 @@ def uninstall_sparql_patches() -> None:
     global _orig_unary_minus, _orig_unary_plus
     global _orig_abs, _orig_ceil, _orig_floor, _orig_round
     global _orig_agg_numeric, _orig_agg_type_promotion
+    global _orig_avg_get_value
+    global _orig_Sum_update, _orig_Sum_get_value
+    global _orig_Avg_update, _orig_Avg_get_value
     global _installed
 
     if not _installed:
@@ -572,13 +665,23 @@ def uninstall_sparql_patches() -> None:
     except ImportError:
         pass
 
-    # ---- Patch 4: restore aggregates module ----
+    # ---- Patch 4+5+6: restore aggregates module ----
     try:
         import rdflib.plugins.sparql.aggregates as _agg
         if _orig_agg_numeric:
             _agg.numeric = _orig_agg_numeric
         if _orig_agg_type_promotion:
             _agg.type_promotion = _orig_agg_type_promotion
+        if _orig_avg_get_value:
+            _agg.Average.get_value = _orig_avg_get_value
+        if _orig_Sum_update:
+            _agg.Sum.update = _orig_Sum_update
+        if _orig_Sum_get_value:
+            _agg.Sum.get_value = _orig_Sum_get_value
+        if _orig_Avg_update:
+            _agg.Average.update = _orig_Avg_update
+        if _orig_Avg_get_value:
+            _agg.Average.get_value = _orig_Avg_get_value
     except ImportError:
         pass
 
@@ -593,3 +696,9 @@ def uninstall_sparql_patches() -> None:
     _orig_round = None
     _orig_agg_numeric = None
     _orig_agg_type_promotion = None
+    _orig_avg_get_value = None
+    _orig_avg_get_value = None
+    _orig_Sum_update = None
+    _orig_Sum_get_value = None
+    _orig_Avg_update = None
+    _orig_Avg_get_value = None
