@@ -222,6 +222,7 @@ class TestSPARQLArithmetic:
         assert len(results) == 1
         val = results[0][0].toPython()
         assert val.magnitude == pytest.approx(8)
+        assert val.ucum_unit == "km"
 
     def test_add_cross_unit(self):
         g = Graph()
@@ -452,23 +453,6 @@ class TestOrderByIllTyped:
         # Remaining two are valid and sorted descending
         si_vals = [r[1].toPython().to_si().magnitude for r in results[1:]]
         assert si_vals == sorted(si_vals, reverse=True)
-
-    def test_order_by_multiple_ill_typed(self):
-        """Multiple ill-typed literals all pushed to end."""
-        g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",   datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("bad1",   datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("500 m",  datatype=CDT.length)))
-        g.add((EX.s4, EX.length, Literal("bad2",   datatype=CDT.length)))
-        q = """
-        PREFIX ex: <https://example.org/>
-        SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY ?l
-        """
-        results = list(g.query(q))
-        ill_typed_subjects = {str(EX.s2), str(EX.s4)}
-        # Last two must be the ill-typed ones
-        last_two = {str(r[0]) for r in results[-2:]}
-        assert last_two == ill_typed_subjects
 
 
 

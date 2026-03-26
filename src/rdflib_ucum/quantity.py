@@ -65,12 +65,21 @@ class UCUMQuantity:
                 self._pint_qty = ureg.Quantity(mag, cached_parse_unit(ucum_code))
                 self._ucum_unit = ucum_code
                 return
+            # Fallback: bare number → dimensionless
+            try:
+                stripped = value.strip()
+                mag = float(stripped) if ("." in stripped or "e" in stripped.lower()) else int(stripped)
+                self._pint_qty = ureg.Quantity(mag, cached_parse_unit("1"))
+                self._ucum_unit = "1"
+                return
+            except ValueError:
+                pass
+            if unit is None:
+                raise ValueError(f"Cannot parse UCUM quantity: {value!r}")
             try:
                 mag = float(value) if ("." in value or "e" in value.lower()) else int(value)
             except ValueError:
                 raise ValueError(f"Cannot parse UCUM quantity: {value!r}")
-            if unit is None:
-                raise ValueError(f"No unit provided for value: {value!r}")
             self._pint_qty = ureg.Quantity(mag, cached_parse_unit(unit))
             self._ucum_unit = unit
             return

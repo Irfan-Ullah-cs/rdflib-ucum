@@ -18,9 +18,8 @@ from functools import lru_cache
 
 import pint
 
-# ---------------------------------------------------------------------------
+     
 # Singleton PintUcumRegistry
-# ---------------------------------------------------------------------------
 _ureg: pint.UnitRegistry | None = None
 
 
@@ -48,14 +47,12 @@ def get_ureg() -> pint.UnitRegistry:
 # Regex to split "1.2 km" → ("1.2", "km")
 # Note: (.+?) with \s*$ ensures trailing whitespace is NOT captured in group 2
 LEXICAL_RE = re.compile(
-    r"^\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s+(.+?)\s*$"
+    r"^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\ +(.+?)$"
 )
 
 
-# ---------------------------------------------------------------------------
+     
 # Parsing helpers
-# ---------------------------------------------------------------------------
-
 def ucum_to_pint_unit(ucum_code: str) -> pint.Unit:
     """Convert a UCUM unit code to a Pint Unit via ucumvert."""
     ureg = get_ureg()
