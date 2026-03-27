@@ -2,11 +2,6 @@
 Custom SPARQL functions registered under the ``cdt:`` namespace.
 
 These supplement the native operator support:
-
-  - ``cdt:convert(?qty, "target_unit"^^cdt:ucumunit)``  → convert units
-  - ``cdt:toSI(?qty)``                                   → convert to SI base
-  - ``cdt:getValue(?qty)``                                → extract numeric value
-  - ``cdt:getUnit(?qty)``                                 → extract unit string
   - ``cdt:sameDimension(?a, ?b)``                         → check compatibility
 """
 from __future__ import annotations

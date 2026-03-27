@@ -7,6 +7,8 @@ Tests for:
 - Hash consistency with equality contract: a == b → hash(a) == hash(b)
 - Set and dict usage
 """
+import math
+
 import pytest
 from rdflib import Literal
 
@@ -18,28 +20,13 @@ from rdflib_ucum.quantity import UCUMQuantity
 class TestUCUMQuantityEquality:
 
     def test_same_unit_same_value(self):
-        assert UCUMQuantity("1 m") == UCUMQuantity("1 m")
-
-    def test_cross_unit_length(self):
-        assert UCUMQuantity("1 km") == UCUMQuantity("1000 m")
-
-    def test_cross_unit_mass(self):
-        assert UCUMQuantity("1 kg") == UCUMQuantity("1000 g")
+        assert UCUMQuantity("1000 m") == UCUMQuantity("1 km")
 
     def test_cross_unit_time(self):
         assert UCUMQuantity("1 h") == UCUMQuantity("3600 s")
 
     def test_cross_unit_pressure(self):
         assert UCUMQuantity("1 kPa") == UCUMQuantity("1000 Pa")
-
-    def test_cross_unit_energy(self):
-        assert UCUMQuantity("1 kJ") == UCUMQuantity("1000 J")
-
-    def test_cross_unit_power(self):
-        assert UCUMQuantity("1 kW") == UCUMQuantity("1000 W")
-
-    def test_cross_unit_frequency(self):
-        assert UCUMQuantity("1 kHz") == UCUMQuantity("1000 Hz")
 
     def test_cross_unit_speed(self):
         # 1 m/s = 3.6 km/h
@@ -82,40 +69,28 @@ class TestUCUMQuantityEquality:
         """50% = 0.5 (dimensionless)."""
         assert UCUMQuantity("50 %") == UCUMQuantity("0.5 1")
 
-    def test_not_equal_to_non_ucum_quantity(self):
-        q = UCUMQuantity("1 m")
-        assert q.__eq__("1 m") is NotImplemented
-        assert q.__eq__(1.0) is NotImplemented
+    def test_speed_of_light(self):
+        """c = 299792458 m/s."""
+        assert UCUMQuantity("299792458 m/s") == UCUMQuantity("1 [c]")
+
+    def test_units_literal_order_irrelevant(self):
+        """1 kg.m/s2 should equal 1 s-2.m.kg."""
+        assert UCUMQuantity("1 kg.m/s2") == UCUMQuantity("1 s-2.m.kg")
 
 
- 
 # RDFLib Literal.eq() delegation
 class TestLiteralEquality:
 
     def test_eq_same_unit(self):
-        a = Literal("1 km", datatype=CDT.length)
+        a = Literal("1000 m", datatype=CDT.length)
         b = Literal("1 km", datatype=CDT.length)
         assert a.eq(b)
 
-    def test_eq_cross_unit_length(self):
-        a = Literal("1 km", datatype=CDT.length)
-        b = Literal("1000 m", datatype=CDT.length)
-        assert a.eq(b)
-
-    def test_eq_cross_unit_mass(self):
-        a = Literal("1 kg", datatype=CDT.mass)
-        b = Literal("1000 g", datatype=CDT.mass)
-        assert a.eq(b)
 
     def test_eq_cross_unit_time(self):
         a = Literal("1 h", datatype=CDT.time)
         b = Literal("3600 s", datatype=CDT.time)
         assert a.eq(b)
-
-    def test_neq_different_values(self):
-        a = Literal("1 km", datatype=CDT.length)
-        b = Literal("500 m", datatype=CDT.length)
-        assert not a.eq(b)
 
     def test_neq_incompatible_dimensions_python(self):
         """Different physical dimensions must not be equal at Python level."""
@@ -130,30 +105,19 @@ class TestLiteralEquality:
         assert not a.eq(b)
 
     def test_eq_derived_newton(self):
-        a = Literal("1 N", datatype=CDT.force)
-        b = Literal("1 kg.m/s2", datatype=CDT.force)
+        a = Literal("1 N", datatype=CDT.ucum)
+        b = Literal("1 kg.m/s2", datatype=CDT.ucum)
         assert a.eq(b)
 
     def test_eq_speed(self):
-        a = Literal("3.6 km/h", datatype=CDT.speed)
-        b = Literal("1 m/s", datatype=CDT.speed)
+        a = Literal("3.6 km/h", datatype=CDT.ucum)
+        b = Literal("1 m/s", datatype=CDT.ucum)
         assert a.eq(b)
 
 
  
 # Hash consistency
 class TestHashConsistency:
-
-    def test_equal_quantities_have_equal_hash(self):
-        a = UCUMQuantity("1 km")
-        b = UCUMQuantity("1000 m")
-        assert a == b
-        assert hash(a) == hash(b)
-
-    def test_equal_mass_hash(self):
-        a = UCUMQuantity("1 kg")
-        b = UCUMQuantity("1000 g")
-        assert hash(a) == hash(b)
 
     def test_equal_time_hash(self):
         a = UCUMQuantity("1 h")

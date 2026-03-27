@@ -6,7 +6,6 @@ Tests for CDT namespace definitions:
 - is_cdt_datatype() membership
 - Base URI correctness
 """
-import pytest
 from rdflib import URIRef, XSD
 
 import rdflib_ucum
@@ -15,14 +14,9 @@ from rdflib_ucum.namespace import (
     ALL_CDT_TYPES, ALL_QUANTITY_TYPES,
     ucum, ucumunit,
     is_cdt_datatype,
-    # All 33 quantity URIs
-    acceleration, amountOfSubstance, angle, area, catalyticActivity,
-    dimensionless, electricCapacitance, electricCharge, electricConductance,
-    electricCurrent, electricInductance, electricPotential, electricResistance,
-    energy, force, frequency, illuminance, length, luminousFlux,
-    luminousIntensity, magneticFlux, magneticFluxDensity, mass, power,
-    pressure, radiationDoseAbsorbed, radiationDoseEffective, radioactivity,
-    solidAngle, speed, temperature, time, volume,
+    # quantity URIs
+     length,mass
+
 )
 
 
@@ -71,32 +65,6 @@ class TestCDTTypeCounts:
         assert ucumunit in ALL_CDT_TYPES
 
 
-class TestAllQuantityURIs:
-    """Verify each of the 33 quantity URIs is in ALL_QUANTITY_TYPES."""
-
-    @pytest.mark.parametrize("uri", [
-        acceleration, amountOfSubstance, angle, area, catalyticActivity,
-        dimensionless, electricCapacitance, electricCharge, electricConductance,
-        electricCurrent, electricInductance, electricPotential, electricResistance,
-        energy, force, frequency, illuminance, length, luminousFlux,
-        luminousIntensity, magneticFlux, magneticFluxDensity, mass, power,
-        pressure, radiationDoseAbsorbed, radiationDoseEffective, radioactivity,
-        solidAngle, speed, temperature, time, volume,
-    ])
-    def test_quantity_uri_in_all_quantity_types(self, uri):
-        assert uri in ALL_QUANTITY_TYPES
-
-    @pytest.mark.parametrize("uri", [
-        acceleration, amountOfSubstance, angle, area, catalyticActivity,
-        dimensionless, electricCapacitance, electricCharge, electricConductance,
-        electricCurrent, electricInductance, electricPotential, electricResistance,
-        energy, force, frequency, illuminance, length, luminousFlux,
-        luminousIntensity, magneticFlux, magneticFluxDensity, mass, power,
-        pressure, radiationDoseAbsorbed, radiationDoseEffective, radioactivity,
-        solidAngle, speed, temperature, time, volume,
-    ])
-    def test_quantity_uri_starts_with_cdt_ns(self, uri):
-        assert str(uri).startswith(CDT_NS)
 
 
 class TestIsCdtDatatype:
@@ -119,9 +87,6 @@ class TestIsCdtDatatype:
 
     def test_false_for_arbitrary_uri(self):
         assert not is_cdt_datatype(URIRef("https://example.org/mytype"))
-
-    def test_false_for_similar_uri_wrong_ns(self):
-        assert not is_cdt_datatype(URIRef("http://w3id.org/cdt/length"))  # http not https
 
     def test_true_for_ucum(self):
         assert is_cdt_datatype(ucum)

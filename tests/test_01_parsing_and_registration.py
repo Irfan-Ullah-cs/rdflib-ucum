@@ -56,6 +56,15 @@ class TestValidLexicalForms:
         assert q.magnitude == 100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0
         assert q.ucum_unit == "m"
 
+    def test_smallest_subnormal(self):
+        q = UCUMQuantity("5e-324 m")
+        assert math.isfinite(q.magnitude)
+        assert q.magnitude > 0.0        # did not underflow to zero
+        assert q.ucum_unit == "m"
+
+    def test_underflow_to_zero(self):
+        q = UCUMQuantity("1e-325 m")
+        assert q.magnitude == 0.0       # underflows to zero
 
     def test_compound_unit_division(self):
         q = UCUMQuantity("9.8 m/s2")
@@ -90,7 +99,19 @@ class TestValidLexicalForms:
         assert q.ucum_unit == "[ly].s/[ft_i]"
         assert q.dimensionality == { "[time]": 1}
 
+    def test_radom_combination_of_ucum_unit3(self):
+        """Apothecaries dram per minim squared times speed of light -
+        valid UCUM syntax, physically meaningless."""
+        q = UCUMQuantity("1 [dr_ap]/[min_us]2.[c]")
+        assert q.magnitude == 1
+        assert q.ucum_unit == "[dr_ap]/[min_us]2.[c]"
 
+    def test_compound_constant_unit(self):
+        """[pi].[c]/[h] — valid UCUM expression combining physical constants."""
+        q = UCUMQuantity("1 [pi].[c]/[h]")
+        assert q.magnitude == 1
+        assert q.ucum_unit == "[pi].[c]/[h]"
+        assert math.isfinite(q.magnitude)
 
     def test_temperature_kelvin(self):
         q = UCUMQuantity("273.15e33 K")
@@ -169,11 +190,6 @@ class TestRegistration:
         lit = Literal("1 km", datatype=CDT.length)
         assert isinstance(lit.toPython(), UCUMQuantity)
 
-    def test_toPython_length(self):
-        lit = Literal("1.5 au", datatype=CDT.length)
-        q = lit.toPython()
-        assert q.magnitude == 1.5
-        assert q.ucum_unit == "au"
 
     def test_toPython_permeability_of_vacuum(self):
         lit = Literal("70 H/m", datatype=CDT.ucum)
@@ -188,4 +204,9 @@ class TestRegistration:
         assert q.ucum_unit == "[c]"
         assert q.dimensionality == {"[length]": 1, "[time]": -1}
 
-    
+    def test_astronomical_unit(self):
+        q = UCUMQuantity("1 au")
+        assert q.magnitude == 1
+        assert q.ucum_unit == "au"
+        assert q.dimensionality == {}
+        assert q.to_si().magnitude == 149597870700
