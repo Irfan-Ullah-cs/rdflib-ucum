@@ -177,7 +177,7 @@ class TestRegistration:
 
     def test_ill_typed_literal_falls_back_to_literal(self):
         """Invalid lexical form: RDFLib cannot convert, toPython returns the Literal itself."""
-        lit = Literal("not_a_quantity", datatype=CDT.length)
+        lit = Literal("not_a_quantity", datatype=CDT.ucum)
         result = lit.toPython()
         assert str(result) == "not_a_quantity"
         assert lit.ill_typed
@@ -187,7 +187,7 @@ class TestRegistration:
         from rdflib_ucum.registration import register_datatypes
         register_datatypes()
         register_datatypes()
-        lit = Literal("1 km", datatype=CDT.length)
+        lit = Literal("1 km", datatype=CDT.ucum)
         assert isinstance(lit.toPython(), UCUMQuantity)
 
 
