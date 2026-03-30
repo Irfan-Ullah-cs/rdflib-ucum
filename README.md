@@ -39,11 +39,11 @@ import rdflib_ucum  # auto-registers everything on import
 from rdflib import Literal
 from rdflib_ucum import CDT
 
-a = Literal("1 km",   datatype=CDT.length)
-b = Literal("1000 m", datatype=CDT.length)
+a = Literal("1 km",   datatype=CDT.ucum)
+b = Literal("1000 m", datatype=CDT.ucum)
 
 assert a.toPython() == b.toPython()  # True - unit-aware equality
-assert a.toPython() > Literal("500 m", datatype=CDT.length).toPython()
+assert a.toPython() > Literal("500 m", datatype=CDT.ucum).toPython()
 ```
 
 ## Python API
@@ -114,7 +114,7 @@ PREFIX ex:  <https://example.org/>
 # FILTER with cross-unit comparison - matches "1 km"^^cdt:length because 1 km > 500 m
 SELECT ?sensor WHERE {
     ?sensor ex:distance ?d .
-    FILTER(?d > "500 m"^^cdt:length)
+    FILTER(?d > "500 m"^^cdt:ucum)
 }
 ```
 
@@ -142,7 +142,7 @@ PREFIX cdt: <https://w3id.org/cdt/>
 
 SELECT ?s WHERE {
     ?s ex:measurement ?v .
-    FILTER(cdt:sameDimension(?v, "1 m"^^cdt:length))
+    FILTER(cdt:sameDimension(?v, "1 m"^^cdt:ucum))
 }
 ```
 
@@ -157,7 +157,7 @@ from rdflib_ucum import CDT
 
 EX = Namespace("https://example.org/")
 g  = Graph()
-g.add((EX.sensor, EX.speed, Literal("3.6 km/h", datatype=CDT.speed)))
+g.add((EX.sensor, EX.speed, Literal("3.6 km/h", datatype=CDT.ucum)))
 
 g2  = Graph().parse(data=g.serialize(format="turtle"), format="turtle")
 val = list(g2.objects(EX.sensor, EX.speed))[0].toPython()

@@ -1,8 +1,8 @@
 """
-Datatype registration — calls ``rdflib.term.bind()`` for all CDT types.
+Datatype registration - calls ``rdflib.term.bind()`` for all CDT types.
 
 After ``register_datatypes()`` runs:
-  - ``Literal("1.2 km", datatype=CDT.length).toPython()`` → ``UCUMQuantity``
+  - ``Literal("1.2 km", datatype=CDT.ucum).toPython()`` → ``UCUMQuantity``
   - ``Literal.eq()`` uses ``UCUMQuantity.__eq__`` → unit-aware SPARQL ``=``
   - ``Literal.__gt__`` uses ``UCUMQuantity.__gt__`` → unit-aware ORDER BY
   - ``Literal.__add__`` uses ``UCUMQuantity.__add__`` → Python-level arithmetic
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from rdflib.term import bind
 
-from .namespace import ALL_QUANTITY_TYPES, ucum, ucumunit
+from .namespace import  ucum, ucumunit
 from .quantity import UCUMQuantity
 from .unit import UCUMUnit
 
@@ -45,7 +45,7 @@ _registered = False
 
 def register_datatypes() -> None:
     """
-    Register all 35 CDT datatypes with RDFLib via ``bind()``.
+    Register datatypes with RDFLib via ``bind()``.
 
     Safe to call multiple times — only registers once.
 
@@ -76,13 +76,3 @@ def register_datatypes() -> None:
         lexicalizer=_serialize_unit,
         datatype_specific=True,
     )
-
-    # All 33 dimension-specific quantity types — identical parsing behavior
-    for dt_uri in ALL_QUANTITY_TYPES:
-        bind(
-            datatype=dt_uri,
-            pythontype=UCUMQuantity,
-            constructor=_parse_quantity,
-            lexicalizer=_serialize_quantity,
-            datatype_specific=True,
-        )

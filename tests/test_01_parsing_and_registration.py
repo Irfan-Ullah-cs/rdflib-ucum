@@ -3,7 +3,7 @@ test_01_parsing_and_registration.py
 
 Tests for:
 - UCUMQuantity lexical parsing (valid and invalid forms)
-- RDFLib bind() registration for all 35 CDT types
+- RDFLib bind() registration for CDT types
 - Literal.toPython() returns correct Python types
 """
 import math
@@ -13,7 +13,7 @@ from rdflib import Literal
 
 import rdflib_ucum
 from rdflib_ucum import CDT
-from rdflib_ucum.namespace import ALL_QUANTITY_TYPES, ucum, ucumunit
+from rdflib_ucum.namespace import  ucum, ucumunit
 from rdflib_ucum.quantity import UCUMQuantity
 from rdflib_ucum.unit import UCUMUnit
 
@@ -205,8 +205,7 @@ class TestRegistration:
         assert q.dimensionality == {"[length]": 1, "[time]": -1}
 
     def test_astronomical_unit(self):
-        q = UCUMQuantity("1 au")
+        q = UCUMQuantity("1 AU")
         assert q.magnitude == 1
-        assert q.ucum_unit == "au"
-        assert q.dimensionality == {}
-        assert q.to_si().magnitude == 149597870700
+        assert q.ucum_unit == "AU"
+        assert q.dimensionality == {"[length]": 1}

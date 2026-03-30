@@ -161,8 +161,8 @@ class TestTemperature:
             UCUMQuantity("10 Cel") + UCUMQuantity("20 Cel")
 
     def test_kelvin_literal_comparison(self):
-        a = Literal("300 K", datatype=CDT.temperature)
-        b = Literal("273.15 K", datatype=CDT.temperature)
+        a = Literal("300 K", datatype=CDT.ucum)
+        b = Literal("273.15 K", datatype=CDT.ucum)
         assert a > b
 
     def test_kelvin_to_si_is_kelvin(self):
@@ -274,7 +274,7 @@ class TestSerialization:
 
 class TestSPARQLMathEdgeCases:
 
-    def _q1(self, fn, lexical, datatype=CDT.length):
+    def _q1(self, fn, lexical, datatype=CDT.ucum):
         g = Graph()
         g.add((EX.s, EX.v, Literal(lexical, datatype=datatype)))
         res = list(g.query(f"""
@@ -309,14 +309,14 @@ class TestSPARQLMathEdgeCases:
 
     def test_round_mass_unit(self):
         """ROUND works on non-length CDT types."""
-        r = self._q1("ROUND", "2.7 kg", CDT.mass)
+        r = self._q1("ROUND", "2.7 kg", CDT.ucum)
         assert r.toPython().magnitude == pytest.approx(3.0)
-        assert r.datatype == CDT.mass
+        assert r.datatype == CDT.ucum
 
     def test_ceil_speed(self):
-        r = self._q1("CEIL", "3.2 m/s", CDT.speed)
+        r = self._q1("CEIL", "3.2 m/s", CDT.ucum)
         assert r.toPython().magnitude == pytest.approx(4.0)
-        assert r.datatype == CDT.speed
+        assert r.datatype == CDT.ucum
 
     def test_floor_negative_near_zero(self):
         """FLOOR(-0.1) = -1."""
@@ -337,13 +337,13 @@ class TestSPARQLDimensionless:
     def test_filter_dimensionless_equality(self):
         """50% == 0.5 in a SPARQL FILTER."""
         g = Graph()
-        g.add((EX.s1, EX.v, Literal("50 %",  datatype=CDT.dimensionless)))
-        g.add((EX.s2, EX.v, Literal("0.5 1", datatype=CDT.dimensionless)))
+        g.add((EX.s1, EX.v, Literal("50 %",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.v, Literal("0.5 1", datatype=CDT.ucum)))
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:v ?v .
-            FILTER(?v = "0.5 1"^^<https://w3id.org/cdt/dimensionless>)
+            FILTER(?v = "0.5 1"^^<https://w3id.org/cdt/ucum>)
         }
         """))
         subjects = {str(r[0]) for r in res}
@@ -352,9 +352,9 @@ class TestSPARQLDimensionless:
 
     def test_order_by_dimensionless(self):
         g = Graph()
-        g.add((EX.s1, EX.v, Literal("0.25 1", datatype=CDT.dimensionless)))
-        g.add((EX.s2, EX.v, Literal("50 %",   datatype=CDT.dimensionless)))
-        g.add((EX.s3, EX.v, Literal("0.1 1",  datatype=CDT.dimensionless)))
+        g.add((EX.s1, EX.v, Literal("0.25 1", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.v, Literal("50 %",   datatype=CDT.ucum)))
+        g.add((EX.s3, EX.v, Literal("0.1 1",  datatype=CDT.ucum)))
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT ?s ?v WHERE { ?s ex:v ?v . }

@@ -82,14 +82,14 @@ class TestUCUMQuantityEquality:
 class TestLiteralEquality:
 
     def test_eq_same_unit(self):
-        a = Literal("1000 m", datatype=CDT.length)
-        b = Literal("1 km", datatype=CDT.length)
+        a = Literal("1000 m", datatype=CDT.ucum)
+        b = Literal("1 km", datatype=CDT.ucum)
         assert a.eq(b)
 
 
     def test_eq_cross_unit_time(self):
-        a = Literal("1 h", datatype=CDT.time)
-        b = Literal("3600 s", datatype=CDT.time)
+        a = Literal("1 h", datatype=CDT.ucum)
+        b = Literal("3600 s", datatype=CDT.ucum)
         assert a.eq(b)
 
     def test_neq_incompatible_dimensions_python(self):
@@ -98,11 +98,7 @@ class TestLiteralEquality:
         b = UCUMQuantity("1 kg")
         assert not (a == b)
 
-    def test_neq_different_cdt_type_uris_literal(self):
-        """Different CDT datatype URIs — RDFLib rejects equality at datatype level."""
-        a = Literal("1 m", datatype=CDT.length)
-        b = Literal("1 m", datatype=CDT.mass)
-        assert not a.eq(b)
+
 
     def test_eq_derived_newton(self):
         a = Literal("1 N", datatype=CDT.ucum)

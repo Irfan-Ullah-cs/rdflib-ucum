@@ -133,12 +133,12 @@ class TestLiteralComparison:
 
     def test_literal_gt_same_unit(self):
         a = Literal("1000 m", datatype=CDT.ucum)
-        b = Literal("500 m", datatype=CDT.length)
+        b = Literal("500 m", datatype=CDT.ucum)
         assert a > b
 
     def test_literal_gt_cross_unit(self):
-        a = Literal("1 km", datatype=CDT.length)
-        b = Literal("500 m", datatype=CDT.length)
+        a = Literal("1 km", datatype=CDT.ucum)
+        b = Literal("500 m", datatype=CDT.ucum)
         assert a > b
 
     def test_literal_lt_cross_unit(self):
@@ -147,13 +147,13 @@ class TestLiteralComparison:
         assert a < b
 
     def test_literal_ge_equal(self):
-        a = Literal("1 km", datatype=CDT.length)
-        b = Literal("1000 m", datatype=CDT.length)
+        a = Literal("1 km", datatype=CDT.ucum)
+        b = Literal("1000 m", datatype=CDT.ucum)
         assert a >= b
 
     def test_literal_le_equal(self):
-        a = Literal("1000 m", datatype=CDT.length)
-        b = Literal("1 km", datatype=CDT.length)
+        a = Literal("1000 m", datatype=CDT.ucum)
+        b = Literal("1 km", datatype=CDT.ucum)
         assert a <= b
 
     def test_literal_mass_comparison(self):

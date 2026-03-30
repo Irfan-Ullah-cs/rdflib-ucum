@@ -27,17 +27,17 @@ EX = Namespace("https://example.org/")
 def make_graph():
     """Return a fresh graph with sample CDT data."""
     g = Graph()
-    g.add((EX.s1, EX.length, Literal("1 km",    datatype=CDT.length)))
-    g.add((EX.s2, EX.length, Literal("1000 m",  datatype=CDT.length)))
-    g.add((EX.s3, EX.length, Literal("500 m",   datatype=CDT.length)))
-    g.add((EX.s4, EX.length, Literal("2 km",    datatype=CDT.length)))
-    g.add((EX.s1, EX.mass,   Literal("70 kg",   datatype=CDT.mass)))
-    g.add((EX.s2, EX.mass,   Literal("70000 g", datatype=CDT.mass)))
-    g.add((EX.s3, EX.mass,   Literal("35 kg",   datatype=CDT.mass)))
-    g.add((EX.s1, EX.speed,  Literal("3.6 km/h",datatype=CDT.speed)))
-    g.add((EX.s2, EX.speed,  Literal("1 m/s",   datatype=CDT.speed)))
-    g.add((EX.s1, EX.energy, Literal("1 kJ",    datatype=CDT.energy)))
-    g.add((EX.s2, EX.energy, Literal("1000 J",  datatype=CDT.energy)))
+    g.add((EX.s1, EX.length, Literal("1 km",    datatype=CDT.ucum)))
+    g.add((EX.s2, EX.length, Literal("1000 m",  datatype=CDT.ucum)))
+    g.add((EX.s3, EX.length, Literal("500 m",   datatype=CDT.ucum)))
+    g.add((EX.s4, EX.length, Literal("2 km",    datatype=CDT.ucum)))
+    g.add((EX.s1, EX.mass,   Literal("70 kg",   datatype=CDT.ucum)))
+    g.add((EX.s2, EX.mass,   Literal("70000 g", datatype=CDT.ucum)))
+    g.add((EX.s3, EX.mass,   Literal("35 kg",   datatype=CDT.ucum)))
+    g.add((EX.s1, EX.speed,  Literal("3.6 km/h",datatype=CDT.ucum)))
+    g.add((EX.s2, EX.speed,  Literal("1 m/s",   datatype=CDT.ucum)))
+    g.add((EX.s1, EX.energy, Literal("1 kJ",    datatype=CDT.ucum)))
+    g.add((EX.s2, EX.energy, Literal("1000 J",  datatype=CDT.ucum)))
     return g
 
 
@@ -52,7 +52,7 @@ class TestSPARQLEquality:
         PREFIX cdt: <https://w3id.org/cdt/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l = "1000 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l = "1000 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -67,7 +67,7 @@ class TestSPARQLEquality:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l != "500 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l != "500 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -83,7 +83,7 @@ class TestSPARQLEquality:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:mass ?m .
-            FILTER(?m = "70 kg"^^<https://w3id.org/cdt/mass>)
+            FILTER(?m = "70 kg"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -97,7 +97,7 @@ class TestSPARQLEquality:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:speed ?v .
-            FILTER(?v = "1 m/s"^^<https://w3id.org/cdt/speed>)
+            FILTER(?v = "1 m/s"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -116,7 +116,7 @@ class TestSPARQLComparison:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l > "600 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l > "600 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -132,7 +132,7 @@ class TestSPARQLComparison:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l < "1 km"^^<https://w3id.org/cdt/length>)
+            FILTER(?l < "1 km"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -146,7 +146,7 @@ class TestSPARQLComparison:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l >= "1 km"^^<https://w3id.org/cdt/length>)
+            FILTER(?l >= "1 km"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -162,7 +162,7 @@ class TestSPARQLComparison:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l <= "1000 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l <= "1000 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -192,7 +192,7 @@ class TestSPARQLComparison:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:mass ?m .
-            FILTER(?m > "50 kg"^^<https://w3id.org/cdt/mass>)
+            FILTER(?m > "50 kg"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -208,8 +208,8 @@ class TestSPARQLArithmetic:
 
     def test_add_same_unit(self):
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("3 km", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("3 km", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?result WHERE {
@@ -226,8 +226,8 @@ class TestSPARQLArithmetic:
 
     def test_add_cross_unit(self):
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?result WHERE {
@@ -242,8 +242,8 @@ class TestSPARQLArithmetic:
 
     def test_sub(self):
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("5 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("200 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?result WHERE {
@@ -258,7 +258,7 @@ class TestSPARQLArithmetic:
 
     def test_mul_by_scalar(self):
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("5 km", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?result WHERE {
@@ -269,11 +269,11 @@ class TestSPARQLArithmetic:
         results = list(g.query(q))
         val = results[0][0].toPython()
         assert val.magnitude == pytest.approx(10)
-        assert results[0][0].datatype == CDT.length
+        assert results[0][0].datatype == CDT.ucum
 
     def test_div_by_scalar(self):
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("10 km", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("10 km", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?result WHERE {
@@ -284,7 +284,7 @@ class TestSPARQLArithmetic:
         results = list(g.query(q))
         val = results[0][0].toPython()
         assert val.magnitude == pytest.approx(5)
-        assert results[0][0].datatype == CDT.length
+        assert results[0][0].datatype == CDT.ucum
 
     def test_energy_equality_cross_unit(self):
         """1 kJ and 1000 J should match in SPARQL FILTER."""
@@ -293,7 +293,7 @@ class TestSPARQLArithmetic:
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:energy ?e .
-            FILTER(?e = "1 kJ"^^<https://w3id.org/cdt/energy>)
+            FILTER(?e = "1 kJ"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -311,8 +311,8 @@ class TestSPARQLSameDimension:
     def test_same_dimension_true(self):
         """Two different length units — same physical dimension → True."""
         g = Graph()
-        g.add((EX.s1, EX.val1, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s1, EX.val2, Literal("500 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.val1, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s1, EX.val2, Literal("500 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         PREFIX cdt: <https://w3id.org/cdt/>
@@ -328,8 +328,8 @@ class TestSPARQLSameDimension:
     def test_same_dimension_true_different_unit_types(self):
         """N and kg.m/s2 — same physical dimension → True."""
         g = Graph()
-        g.add((EX.s1, EX.val1, Literal("1 N",      datatype=CDT.force)))
-        g.add((EX.s1, EX.val2, Literal("1 kg.m/s2", datatype=CDT.force)))
+        g.add((EX.s1, EX.val1, Literal("1 N",      datatype=CDT.ucum)))
+        g.add((EX.s1, EX.val2, Literal("1 kg.m/s2", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         PREFIX cdt: <https://w3id.org/cdt/>
@@ -345,8 +345,8 @@ class TestSPARQLSameDimension:
     def test_same_dimension_false(self):
         """Length and mass — different physical dimensions → False."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s1, EX.mass,   Literal("1 kg",  datatype=CDT.mass)))
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s1, EX.mass,   Literal("1 kg",  datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         PREFIX cdt: <https://w3id.org/cdt/>
@@ -362,8 +362,8 @@ class TestSPARQLSameDimension:
     def test_same_dimension_false_length_vs_time(self):
         """Length and time — different dimensions → False."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 m",  datatype=CDT.length)))
-        g.add((EX.s1, EX.time,   Literal("1 s",  datatype=CDT.time)))
+        g.add((EX.s1, EX.length, Literal("1 m",  datatype=CDT.ucum)))
+        g.add((EX.s1, EX.time,   Literal("1 s",  datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         PREFIX cdt: <https://w3id.org/cdt/>
@@ -379,15 +379,15 @@ class TestSPARQLSameDimension:
     def test_same_dimension_compatible_via_filter(self):
         """Use cdt:sameDimension in FILTER to select compatible pairs."""
         g = Graph()
-        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.val, Literal("1 kg",  datatype=CDT.mass)))
-        g.add((EX.s3, EX.val, Literal("500 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.val, Literal("1 kg",  datatype=CDT.ucum)))
+        g.add((EX.s3, EX.val, Literal("500 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         PREFIX cdt: <https://w3id.org/cdt/>
         SELECT ?s WHERE {
             ?s ex:val ?v .
-            FILTER(cdt:sameDimension(?v, "1 m"^^<https://w3id.org/cdt/length>))
+            FILTER(cdt:sameDimension(?v, "1 m"^^<https://w3id.org/cdt/ucum>))
         }
         """
         results = list(g.query(q))
@@ -410,9 +410,9 @@ class TestOrderByIllTyped:
     def test_order_by_valid_only(self):
         """Valid CDT literals sort correctly by value."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("2 km",   datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("500 m",  datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("1500 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("2 km",   datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("500 m",  datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("1500 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE { ?s ex:length ?l . } ORDER BY ?l
@@ -423,9 +423,9 @@ class TestOrderByIllTyped:
     def test_order_by_ill_typed_pushed_to_end(self):
         """Ill-typed CDT literals must appear after valid ones in ORDER BY."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.ucum)))  # ill-typed
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY ?l
@@ -440,9 +440,9 @@ class TestOrderByIllTyped:
     def test_order_by_desc_ill_typed_still_at_end(self):
         """With DESC, ill-typed literals appear at the beginning (sort key reversal)."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.ucum)))  # ill-typed
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?s ?l WHERE { ?s ex:length ?l . } ORDER BY DESC(?l)
@@ -458,7 +458,7 @@ class TestOrderByIllTyped:
 
 class TestSPARQLUnaryAndMath:
 
-    def _graph_one(self, lexical, datatype=CDT.length):
+    def _graph_one(self, lexical, datatype=CDT.ucum):
         g = Graph()
         g.add((EX.s1, EX.val, Literal(lexical, datatype=datatype)))
         return g
@@ -535,12 +535,12 @@ class TestSPARQLUnaryAndMath:
         assert res[0][0].toPython().magnitude == pytest.approx(3.0)
 
     def test_ceil_preserves_datatype(self):
-        g = self._graph_one("1.4 kg", CDT.mass)
+        g = self._graph_one("1.4 kg", CDT.ucum)
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].datatype == CDT.mass
+        assert res[0][0].datatype == CDT.ucum
 
     def test_ceil_ill_typed_returns_unbound(self):
         g = self._graph_one("bad")
@@ -578,12 +578,12 @@ class TestSPARQLUnaryAndMath:
         assert res[0][0].toPython().magnitude == pytest.approx(5.0)
 
     def test_floor_preserves_datatype(self):
-        g = self._graph_one("9.9 s", CDT.time)
+        g = self._graph_one("9.9 s", CDT.ucum)
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].datatype == CDT.time
+        assert res[0][0].datatype == CDT.ucum
 
     def test_floor_ill_typed_returns_unbound(self):
         g = self._graph_one("bad")
@@ -630,12 +630,12 @@ class TestSPARQLUnaryAndMath:
         assert res[0][0].toPython().magnitude == pytest.approx(-1.0)
 
     def test_round_preserves_datatype(self):
-        g = self._graph_one("9.6 kg", CDT.mass)
+        g = self._graph_one("9.6 kg", CDT.ucum)
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].datatype == CDT.mass
+        assert res[0][0].datatype == CDT.ucum
 
     def test_round_ill_typed_returns_unbound(self):
         g = self._graph_one("bad")
@@ -664,7 +664,7 @@ class TestSPARQLUnaryAndMath:
         assert res[0][0].toPython().magnitude == pytest.approx(5.0)
 
     def test_unary_minus_preserves_unit(self):
-        g = self._graph_one("3 kg", CDT.mass)
+        g = self._graph_one("3 kg", CDT.ucum)
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
@@ -678,13 +678,13 @@ class TestSPARQLUnaryAndMath:
     def test_abs_then_filter(self):
         """ABS result can be used in a FILTER comparison."""
         g = Graph()
-        g.add((EX.s1, EX.val, Literal("-1.5 km", datatype=CDT.length)))
-        g.add((EX.s2, EX.val, Literal("0.5 km",  datatype=CDT.length)))
+        g.add((EX.s1, EX.val, Literal("-1.5 km", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.val, Literal("0.5 km",  datatype=CDT.ucum)))
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:val ?v .
-            FILTER(ABS(?v) > "1 km"^^<https://w3id.org/cdt/length>)
+            FILTER(ABS(?v) > "1 km"^^<https://w3id.org/cdt/ucum>)
         }
         """))
         assert len(res) == 1
@@ -693,9 +693,9 @@ class TestSPARQLUnaryAndMath:
     def test_negate_then_order_by(self):
         """ORDER BY on negated values reverses sort order."""
         g = Graph()
-        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.val, Literal("2 km",  datatype=CDT.length)))
-        g.add((EX.s3, EX.val, Literal("3 km",  datatype=CDT.length)))
+        g.add((EX.s1, EX.val, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.val, Literal("2 km",  datatype=CDT.ucum)))
+        g.add((EX.s3, EX.val, Literal("3 km",  datatype=CDT.ucum)))
         res = list(g.query("""
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE { ?s ex:val ?v . }
@@ -711,9 +711,9 @@ class TestSPARQLAggregates:
     def test_sum_same_unit(self):
         """SUM of valid CDT literals returns correct magnitude."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
@@ -725,10 +725,10 @@ class TestSPARQLAggregates:
     def test_sum_skips_ill_typed(self):
         """SUM silently skips ill-typed literals and sums only valid ones."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("2 km",  datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
-        g.add((EX.s4, EX.length, Literal("3 km",  datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("2 km",  datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.ucum)))  # ill-typed
+        g.add((EX.s4, EX.length, Literal("3 km",  datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
@@ -740,8 +740,8 @@ class TestSPARQLAggregates:
     def test_sum_all_ill_typed_returns_zero(self):
         """SUM with all ill-typed literals returns 0 (empty sum)."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("bad1", datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("bad2", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("bad1", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("bad2", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
@@ -752,9 +752,9 @@ class TestSPARQLAggregates:
     def test_avg_valid_only(self):
         """AVG of valid CDT literals returns correct magnitude."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("2 km", datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("3 km", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
@@ -765,9 +765,9 @@ class TestSPARQLAggregates:
     def test_avg_skips_ill_typed(self):
         """AVG silently skips ill-typed literals."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("2 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("4 km",  datatype=CDT.length)))
-        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.length)))  # ill-typed
+        g.add((EX.s1, EX.length, Literal("2 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("4 km",  datatype=CDT.ucum)))
+        g.add((EX.s3, EX.length, Literal("bad",   datatype=CDT.ucum)))  # ill-typed
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
@@ -779,8 +779,8 @@ class TestSPARQLAggregates:
     def test_count_includes_ill_typed(self):
         """COUNT counts all bound values including ill-typed (by design)."""
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("bad",   datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("bad",   datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT (COUNT(?l) AS ?n) WHERE { ?s ex:length ?l . }
@@ -799,13 +799,13 @@ class TestPatchLifecycle:
         install_sparql_patches()
         # Verify SPARQL still works
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km",   datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("1000 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km",   datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("1000 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l > "500 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l > "500 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
@@ -815,13 +815,13 @@ class TestPatchLifecycle:
         uninstall_sparql_patches()
         install_sparql_patches()
         g = Graph()
-        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.length)))
-        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.length)))
+        g.add((EX.s1, EX.length, Literal("1 km", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.length, Literal("500 m", datatype=CDT.ucum)))
         q = """
         PREFIX ex: <https://example.org/>
         SELECT ?s WHERE {
             ?s ex:length ?l .
-            FILTER(?l > "600 m"^^<https://w3id.org/cdt/length>)
+            FILTER(?l > "600 m"^^<https://w3id.org/cdt/ucum>)
         }
         """
         results = list(g.query(q))
