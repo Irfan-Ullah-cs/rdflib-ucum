@@ -111,7 +111,7 @@ SPARQL operators work natively on CDT quantity literals with no custom functions
 PREFIX cdt: <https://w3id.org/cdt/>
 PREFIX ex:  <https://example.org/>
 
-# FILTER with cross-unit comparison - matches "1 km"^^cdt:length because 1 km > 500 m
+# FILTER with cross-unit comparison - matches "1 km"^^cdt:ucum because 1 km > 500 m
 SELECT ?sensor WHERE {
     ?sensor ex:distance ?d .
     FILTER(?d > "500 m"^^cdt:ucum)
