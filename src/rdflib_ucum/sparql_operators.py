@@ -47,6 +47,7 @@ from rdflib.plugins.sparql.evalutils import SPARQLError
 
 from .namespace import is_cdt_datatype
 from .quantity import UCUMQuantity
+from .exceptions import UCUMDimensionError, UCUMArithmeticError
 
     
 # Original references (saved on install, restored on uninstall)   
@@ -161,7 +162,7 @@ def _patched_RelationalExpression(e, ctx) -> Literal:
                     f"Cannot compare CDT literals: {expr!r} {op} {other!r}"
                 )
             return Literal(r)
-        except TypeError as te:
+        except (TypeError, UCUMDimensionError, UCUMArithmeticError) as te:
             raise SPARQLError(*te.args)
 
     return _orig_relational(e, ctx)
@@ -200,7 +201,7 @@ def _patched_AdditiveExpression(e, ctx) -> Literal:
                     result_qty = result_qty + term_qty
                 else:
                     result_qty = result_qty - term_qty
-            except TypeError as te:
+            except (TypeError, UCUMDimensionError, UCUMArithmeticError) as te:
                 raise SPARQLError(*te.args)
 
         return Literal(result_qty.to_lexical(), datatype=result_dt)
@@ -266,7 +267,7 @@ def _patched_MultiplicativeExpression(e, ctx) -> Literal:
                         result_qty = result_qty * term_val
                     else:
                         result_qty = result_qty / term_val
-                except TypeError as te:
+                except (TypeError, UCUMDimensionError, UCUMArithmeticError) as te:
                     raise SPARQLError(*te.args)
             elif isinstance(term_val, (int, float)):
                 try:
@@ -274,7 +275,7 @@ def _patched_MultiplicativeExpression(e, ctx) -> Literal:
                         result_qty = result_qty * term_val
                     else:
                         result_qty = result_qty / term_val
-                except (TypeError, ZeroDivisionError) as ex:
+                except (TypeError, ZeroDivisionError, UCUMArithmeticError) as ex:
                     raise SPARQLError(str(ex))
             else:
                 raise SPARQLError(

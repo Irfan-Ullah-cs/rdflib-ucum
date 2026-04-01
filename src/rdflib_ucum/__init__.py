@@ -41,6 +41,14 @@ from .unit_mapping import get_ureg
 from .registration import register_datatypes
 from .sparql_operators import install_sparql_patches, uninstall_sparql_patches
 from .sparql_functions import register_sparql_functions
+from .exceptions import (
+    UCUMError,
+    UCUMParseError,
+    UCUMUnitError,
+    UCUMDimensionError,
+    UCUMArithmeticError,
+)
+
 
 __all__ = [
     # Namespace
@@ -51,12 +59,13 @@ __all__ = [
     "register_datatypes",
     # SPARQL
     "install_sparql_patches", "uninstall_sparql_patches", "register_sparql_functions",
+    # Exceptions
+    "UCUMError", "UCUMParseError", "UCUMUnitError",
+    "UCUMDimensionError", "UCUMArithmeticError",
 ]
 
-# ---------------------------------------------------------------------------
-# AUTO-REGISTER on import  (like Jena's ServiceLoader auto-discovery)
-# ---------------------------------------------------------------------------
 
+# AUTO-REGISTER on import
 register_datatypes()
 install_sparql_patches()
 register_sparql_functions()

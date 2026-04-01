@@ -15,6 +15,7 @@ Operator chain (from source investigation):
 from __future__ import annotations
 
 from typing import Union
+from .exceptions import UCUMParseError, UCUMDimensionError, UCUMArithmeticError
 
 import pint
 
@@ -75,17 +76,17 @@ class UCUMQuantity:
             except ValueError:
                 pass
             if unit is None:
-                raise ValueError(f"Cannot parse UCUM quantity: {value!r}")
+                raise UCUMParseError(f"Cannot parse UCUM quantity: {value!r}")
             try:
                 mag = float(value) if ("." in value or "e" in value.lower()) else int(value)
             except ValueError:
-                raise ValueError(f"Cannot parse UCUM quantity: {value!r}")
+                raise UCUMParseError(f"Cannot parse UCUM quantity: {value!r}")
             self._pint_qty = ureg.Quantity(mag, cached_parse_unit(unit))
             self._ucum_unit = unit
             return
 
         if unit is None:
-            raise ValueError("unit is required when value is numeric")
+            raise UCUMParseError("unit is required when value is numeric")
         self._pint_qty = ureg.Quantity(value, cached_parse_unit(unit))
         self._ucum_unit = unit
 
@@ -173,7 +174,7 @@ class UCUMQuantity:
             try:
                 return bool(self._pint_qty < other._pint_qty)
             except pint.DimensionalityError:
-                raise TypeError(
+                raise UCUMDimensionError(
                     f"Cannot compare {self._ucum_unit} with {other._ucum_unit}: "
                     f"incompatible dimensions"
                 )
@@ -189,7 +190,7 @@ class UCUMQuantity:
             try:
                 return bool(self._pint_qty > other._pint_qty)
             except pint.DimensionalityError:
-                raise TypeError(
+                raise UCUMDimensionError(
                     f"Cannot compare {self._ucum_unit} with {other._ucum_unit}: "
                     f"incompatible dimensions"
                 )
@@ -208,7 +209,7 @@ class UCUMQuantity:
                 result = self._pint_qty + other._pint_qty.to(self._pint_qty.units)
                 return UCUMQuantity(result, unit=self._ucum_unit)
             except pint.DimensionalityError:
-                raise TypeError(
+                raise UCUMDimensionError(
                     f"Cannot add {self._ucum_unit} and {other._ucum_unit}: "
                     f"incompatible dimensions"
                 )
@@ -220,7 +221,7 @@ class UCUMQuantity:
                 result = self._pint_qty - other._pint_qty.to(self._pint_qty.units)
                 return UCUMQuantity(result, unit=self._ucum_unit)
             except pint.DimensionalityError:
-                raise TypeError(
+                raise UCUMDimensionError(
                     f"Cannot subtract {other._ucum_unit} from {self._ucum_unit}: "
                     f"incompatible dimensions"
                 )
@@ -244,6 +245,10 @@ class UCUMQuantity:
             result_ucum = f"{self._ucum_unit}/{other._ucum_unit}"
             return UCUMQuantity(result_pint, unit=result_ucum)
         if isinstance(other, (int, float)):
+            if other == 0:
+                raise UCUMArithmeticError(
+                    f"Division by zero: {self._ucum_unit} / 0"
+                )
             return UCUMQuantity(self._pint_qty / other, unit=self._ucum_unit)
         return NotImplemented
 

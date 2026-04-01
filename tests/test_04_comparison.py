@@ -15,6 +15,7 @@ from rdflib import Literal
 import rdflib_ucum
 from rdflib_ucum import CDT
 from rdflib_ucum.quantity import UCUMQuantity
+from rdflib_ucum.exceptions import UCUMDimensionError
 
 
    
@@ -42,7 +43,7 @@ class TestLessThan:
         assert not (UCUMQuantity("1 km") < UCUMQuantity("1000 m"))
 
     def test_lt_incompatible_dimensions_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") < UCUMQuantity("1 kg")
     
     #  Below test contain 300 zeros. 
@@ -68,7 +69,7 @@ class TestGreaterThan:
         assert not (UCUMQuantity("1000 m") > UCUMQuantity("1 km"))
 
     def test_gt_incompatible_dimensions_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") > UCUMQuantity("1 s")
 
     def test_gt_derived_newton_vs_force(self):
@@ -85,7 +86,7 @@ class TestLessOrEqual:
         assert not (UCUMQuantity("2 km") <= UCUMQuantity("1000 m"))
 
     def test_le_incompatible_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") <= UCUMQuantity("1 kg")
 
 
@@ -99,7 +100,7 @@ class TestGreaterOrEqual:
         assert not (UCUMQuantity("500 m") >= UCUMQuantity("1 km"))
 
     def test_ge_incompatible_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") >= UCUMQuantity("1 s")
 
 

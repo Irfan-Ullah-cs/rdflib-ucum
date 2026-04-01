@@ -14,6 +14,7 @@ import pytest
 
 import rdflib_ucum
 from rdflib_ucum.quantity import UCUMQuantity
+from rdflib_ucum.exceptions import UCUMDimensionError
 
 
    
@@ -54,7 +55,7 @@ class TestAddition:
         assert result.ucum_unit == "N"
 
     def test_add_incompatible_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") + UCUMQuantity("1 kg")
 
 
@@ -82,7 +83,7 @@ class TestSubtraction:
         assert result.ucum_unit == "m"
 
     def test_sub_incompatible_raises(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(UCUMDimensionError):
             UCUMQuantity("1 m") - UCUMQuantity("1 s")
 
 

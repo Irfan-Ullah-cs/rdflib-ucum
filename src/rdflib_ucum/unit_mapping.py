@@ -18,6 +18,8 @@ from functools import lru_cache
 
 import pint
 
+from rdflib_ucum.exceptions import UCUMUnitError
+
      
 # Singleton PintUcumRegistry
 _ureg: pint.UnitRegistry | None = None
@@ -69,7 +71,7 @@ def ucum_to_pint_unit(ucum_code: str) -> pint.Unit:
         result = ureg.from_ucum(ucum_code)
         return result.units
     except Exception as e:
-        raise ValueError(f"Cannot parse UCUM unit code: {ucum_code!r}") from e
+        raise UCUMUnitError(f"Cannot parse UCUM unit code: {ucum_code!r}") from e
 
 
 @lru_cache(maxsize=512)
