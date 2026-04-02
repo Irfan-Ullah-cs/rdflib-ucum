@@ -149,6 +149,11 @@ def _patched_RelationalExpression(e, ctx) -> Literal:
         and is_cdt_datatype(expr.datatype)
         and is_cdt_datatype(other.datatype)
     ):
+        # Ill-typed CDT literals cannot be compared
+        if expr.ill_typed or other.ill_typed:
+            raise SPARQLError(
+                f"Cannot compare ill-typed CDT literal: {expr!r} {op} {other!r}"
+            )
         ops = {
             ">":  lambda x, y: x.__gt__(y),
             "<":  lambda x, y: x.__lt__(y),
