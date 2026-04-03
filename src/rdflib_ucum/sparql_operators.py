@@ -67,6 +67,7 @@ _orig_Sum_update = None
 _orig_Sum_get_value = None
 _orig_Avg_update = None
 _orig_Avg_get_value = None
+_orig_evalOrderBy = None
 _installed = False
 
 
@@ -149,11 +150,6 @@ def _patched_RelationalExpression(e, ctx) -> Literal:
         and is_cdt_datatype(expr.datatype)
         and is_cdt_datatype(other.datatype)
     ):
-        # Ill-typed CDT literals cannot be compared
-        if expr.ill_typed or other.ill_typed:
-            raise SPARQLError(
-                f"Cannot compare ill-typed CDT literal: {expr!r} {op} {other!r}"
-            )
         ops = {
             ">":  lambda x, y: x.__gt__(y),
             "<":  lambda x, y: x.__lt__(y),
@@ -508,26 +504,90 @@ def _patched_Avg_get_value(self):
         return Literal(result.to_lexical(), datatype=self.datatype)
     return _orig_Avg_get_value(self)
 
+# ---- ORDER BY sort-key wrapper ----
+
+class _CDTSortKey:
+    """
+    Wrapper that provides a total ordering for CDT literals in ORDER BY.
+
+    Sorts by (dimension_string, SI_magnitude), so mixed-dimension queries
+    group by dimension and sort by converted value within each group.
+    Python-level operators on UCUMQuantity still raise on incompatible
+    dimensions — this wrapper is only used inside evalOrderBy.
+    """
+    __slots__ = ("_dim", "_si_mag")
+
+    def __init__(self, literal):
+        qty = literal.toPython()
+        if isinstance(qty, UCUMQuantity):
+            self._dim = str(qty.pint_quantity.dimensionality)
+            try:
+                self._si_mag = float(qty.pint_quantity.to_base_units().magnitude)
+            except Exception:
+                self._si_mag = float(qty.magnitude)
+        else:
+            self._dim = ""
+            self._si_mag = 0.0
+
+    def __lt__(self, other):
+        if isinstance(other, _CDTSortKey):
+            if self._dim != other._dim:
+                return self._dim < other._dim
+            return self._si_mag < other._si_mag
+        return True   # CDT sorts before non-CDT within same _val rank
+
+    def __gt__(self, other):
+        if isinstance(other, _CDTSortKey):
+            if self._dim != other._dim:
+                return self._dim > other._dim
+            return self._si_mag > other._si_mag
+        return False
+
+    def __eq__(self, other):
+        if isinstance(other, _CDTSortKey):
+            return self._dim == other._dim and self._si_mag == other._si_mag
+        return False
+
+    def __le__(self, other):
+        return self.__lt__(other) or self.__eq__(other)
+
+    def __ge__(self, other):
+        return self.__gt__(other) or self.__eq__(other)
+
+
+def _patched_evalOrderBy(ctx, part):
+    """
+    Drop-in replacement for ``evaluate.evalOrderBy``.
+
+    Wraps CDT literals in ``_CDTSortKey`` so that mixed-dimension
+    ORDER BY produces a deterministic total ordering instead of crashing.
+    """
+    from rdflib.plugins.sparql.evaluate import evalPart, _val, value
+
+    res = evalPart(ctx, part.p)
+
+    for e in reversed(part.expr):
+        reverse = bool(e.order and e.order == "DESC")
+
+        def _safe_key(x, _e=e):
+            v = _val(value(x, _e.expr, variables=True))
+            # v is (rank, node) — wrap CDT literals for safe sorting
+            if isinstance(v, tuple) and len(v) >= 2:
+                inner = v[-1]
+                if (
+                    isinstance(inner, Literal)
+                    and is_cdt_datatype(inner.datatype)
+                    and not inner.ill_typed
+                ):
+                    return (v[0], _CDTSortKey(inner))
+            return v
+
+        res = sorted(res, key=_safe_key, reverse=reverse)
+
+    return res
+
 # Install / Uninstall
 def install_sparql_patches() -> None:
-    """
-    Monkey-patch RDFLib's SPARQL operator handlers to support CDT types.
-
-    Two-layer patching strategy:
-
-    Layer 1 — ``operators.XXX`` module-level function:
-        Needed for any code that imports the function directly.
-
-    Layer 2 — ``Comp.evalfn`` in the pyparsing grammar tree:
-        Each ``g.query(q)`` re-parses the query and creates new ``Expr``
-        objects with ``evalfn`` captured at that moment from the ``Comp``.
-        Patching Layer 1 alone is insufficient for expressions where the
-        ``Comp`` is an anonymous object (UnaryMinus, UnaryPlus, Builtin_*).
-        For named module-level ``Comp`` objects (RelationalExpression etc.)
-        we patch ``_parser.XXX.evalfn`` directly.
-
-    Safe to call multiple times.
-    """
     global _orig_relational, _orig_additive, _orig_multiplicative
     global _orig_unary_minus, _orig_unary_plus
     global _orig_abs, _orig_ceil, _orig_floor, _orig_round
@@ -535,6 +595,7 @@ def install_sparql_patches() -> None:
     global _orig_avg_get_value
     global _orig_Sum_update, _orig_Sum_get_value
     global _orig_Avg_update, _orig_Avg_get_value
+    global _orig_evalOrderBy
     global _installed
 
     if _installed:
@@ -582,11 +643,18 @@ def install_sparql_patches() -> None:
     except (ImportError, AttributeError):
         pass
 
+    # ---- Patch evalOrderBy for mixed-dimension ORDER BY ----
+    try:
+        import rdflib.plugins.sparql.evaluate as _eval_mod
+        _orig_evalOrderBy = _eval_mod.evalOrderBy
+        _eval_mod.evalOrderBy = _patched_evalOrderBy
+    except (ImportError, AttributeError):
+        pass
+
     # ---- Layer 2: patch Comp.evalfn in parser grammar tree ----
     try:
         from rdflib.plugins.sparql import parser as _parser
 
-        # Named module-level Comp objects — patch directly
         for attr, fn in [
             ("RelationalExpression", _patched_RelationalExpression),
             ("AdditiveExpression",   _patched_AdditiveExpression),
@@ -595,7 +663,6 @@ def install_sparql_patches() -> None:
             if hasattr(_parser, attr):
                 getattr(_parser, attr).evalfn = fn
 
-        # Anonymous Comp objects — find by traversing grammar tree
         for comp_name, fn in [
             ("UnaryMinus",   _patched_UnaryMinus),
             ("UnaryPlus",    _patched_UnaryPlus),
@@ -611,7 +678,6 @@ def install_sparql_patches() -> None:
 
 
 def uninstall_sparql_patches() -> None:
-    """Remove all monkey-patches and restore original behavior."""
     global _orig_relational, _orig_additive, _orig_multiplicative
     global _orig_unary_minus, _orig_unary_plus
     global _orig_abs, _orig_ceil, _orig_floor, _orig_round
@@ -619,6 +685,7 @@ def uninstall_sparql_patches() -> None:
     global _orig_avg_get_value
     global _orig_Sum_update, _orig_Sum_get_value
     global _orig_Avg_update, _orig_Avg_get_value
+    global _orig_evalOrderBy
     global _installed
 
     if not _installed:
@@ -671,7 +738,7 @@ def uninstall_sparql_patches() -> None:
     except ImportError:
         pass
 
-    # ---- Patch 4+5+6: restore aggregates module ----
+    # ---- Restore aggregates module ----
     try:
         import rdflib.plugins.sparql.aggregates as _agg
         if _orig_agg_numeric:
@@ -691,6 +758,14 @@ def uninstall_sparql_patches() -> None:
     except ImportError:
         pass
 
+    # ---- Restore evalOrderBy ----
+    try:
+        import rdflib.plugins.sparql.evaluate as _eval_mod
+        if _orig_evalOrderBy:
+            _eval_mod.evalOrderBy = _orig_evalOrderBy
+    except ImportError:
+        pass
+
     _orig_relational = None
     _orig_additive = None
     _orig_multiplicative = None
@@ -703,8 +778,8 @@ def uninstall_sparql_patches() -> None:
     _orig_agg_numeric = None
     _orig_agg_type_promotion = None
     _orig_avg_get_value = None
-    _orig_avg_get_value = None
     _orig_Sum_update = None
     _orig_Sum_get_value = None
     _orig_Avg_update = None
     _orig_Avg_get_value = None
+    _orig_evalOrderBy = None
