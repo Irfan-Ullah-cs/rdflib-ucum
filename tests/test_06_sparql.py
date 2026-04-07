@@ -1,16 +1,18 @@
 """
-test_07_sparql.py
+test_06_sparql.py
 
 Tests for SPARQL-level CDT operator support and custom functions:
 - FILTER equality (=, !=) via Literal.eq()
 - FILTER comparison (<, >, <=, >=) via monkey-patched RelationalExpression
-- ORDER BY with mixed units
+- ORDER BY with mixed units and ill-typed literals
 - Arithmetic in SELECT (+, -, *, /) via monkey-patched Additive/MultiplicativeExpression
 - Scalar multiply in SPARQL
 - Derived unit arithmetic in SPARQL (force = mass × acceleration)
-- Incompatible dimension → SPARQLError
 - cdt:sameDimension custom function
-- Patch install/uninstall idempotency
+- Unary operators: ABS, CEIL, FLOOR, ROUND, unary minus
+- Aggregates: SUM, AVG, COUNT (with ill-typed handling)
+- SPARQL math edge cases on boundary values
+- Dimensionless values in SPARQL
 """
 import pytest
 from rdflib import Graph, Literal, Namespace, URIRef, XSD
@@ -221,7 +223,7 @@ class TestSPARQLArithmetic:
         results = list(g.query(q))
         assert len(results) == 1
         val = results[0][0].toPython()
-        assert val.magnitude == pytest.approx(8)
+        assert val.magnitude == 8
         assert val.ucum_unit == "km"
 
     def test_add_cross_unit(self):
@@ -238,7 +240,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == pytest.approx(5.2)
+        assert val.magnitude == 5.2
 
     def test_sub(self):
         g = Graph()
@@ -254,7 +256,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == pytest.approx(4.8)
+        assert val.magnitude == 4.8
 
     def test_mul_by_scalar(self):
         g = Graph()
@@ -268,7 +270,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == pytest.approx(10)
+        assert val.magnitude == 10
         assert results[0][0].datatype == CDT.ucum
 
     def test_div_by_scalar(self):
@@ -283,7 +285,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == pytest.approx(5)
+        assert val.magnitude == 5
         assert results[0][0].datatype == CDT.ucum
 
     def test_energy_equality_cross_unit(self):
@@ -463,7 +465,7 @@ class TestSPARQLUnaryAndMath:
         g.add((EX.s1, EX.val, Literal(lexical, datatype=datatype)))
         return g
 
-    # ── ABS ──────────────────────────────────────────────────────────────────
+    # -- ABS  ---
 
     def test_abs_positive(self):
         g = self._graph_one("3.5 km")
@@ -471,7 +473,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(3.5)
+        assert res[0][0].toPython().magnitude == 3.5
 
     def test_abs_negative(self):
         g = self._graph_one("-3.5 km")
@@ -479,7 +481,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(3.5)
+        assert res[0][0].toPython().magnitude == 3.5
 
     def test_abs_preserves_unit(self):
         g = self._graph_one("-500 m")
@@ -489,7 +491,7 @@ class TestSPARQLUnaryAndMath:
         """))
         val = res[0][0].toPython()
         assert val.ucum_unit == "m"
-        assert val.magnitude == pytest.approx(500)
+        assert val.magnitude == 500
 
     def test_abs_zero(self):
         g = self._graph_one("0 m")
@@ -497,7 +499,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ABS(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(0)
+        assert res[0][0].toPython().magnitude == 0
 
     def test_abs_ill_typed_returns_unbound(self):
         g = self._graph_one("bad")
@@ -507,7 +509,7 @@ class TestSPARQLUnaryAndMath:
         """))
         assert len(res) == 0
 
-    # ── CEIL ─────────────────────────────────────────────────────────────────
+    # -- CEIL  --
 
     def test_ceil_positive_decimal(self):
         g = self._graph_one("1.2 km")
@@ -515,7 +517,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+        assert res[0][0].toPython().magnitude == 2.0
 
     def test_ceil_negative_decimal(self):
         """CEIL(-1.7) = -1."""
@@ -524,7 +526,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(-1.0)
+        assert res[0][0].toPython().magnitude == -1.0
 
     def test_ceil_whole_number_unchanged(self):
         g = self._graph_one("3 km")
@@ -532,7 +534,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (CEIL(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(3.0)
+        assert res[0][0].toPython().magnitude == 3.0
 
     def test_ceil_preserves_datatype(self):
         g = self._graph_one("1.4 kg", CDT.ucum)
@@ -550,7 +552,7 @@ class TestSPARQLUnaryAndMath:
         """))
         assert len(res) == 0
 
-    # ── FLOOR ────────────────────────────────────────────────────────────────
+    # -- FLOOR  -
 
     def test_floor_positive_decimal(self):
         g = self._graph_one("1.9 km")
@@ -558,7 +560,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(1.0)
+        assert res[0][0].toPython().magnitude == 1.0
 
     def test_floor_negative_decimal(self):
         """FLOOR(-1.2) = -2."""
@@ -567,7 +569,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(-2.0)
+        assert res[0][0].toPython().magnitude == -2.0
 
     def test_floor_whole_number_unchanged(self):
         g = self._graph_one("5 km")
@@ -575,7 +577,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (FLOOR(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(5.0)
+        assert res[0][0].toPython().magnitude == 5.0
 
     def test_floor_preserves_datatype(self):
         g = self._graph_one("9.9 s", CDT.ucum)
@@ -593,7 +595,7 @@ class TestSPARQLUnaryAndMath:
         """))
         assert len(res) == 0
 
-    # - ROUND
+    # -- ROUND  -
 
     def test_round_up(self):
         g = self._graph_one("1.7 km")
@@ -601,7 +603,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+        assert res[0][0].toPython().magnitude == 2.0
 
     def test_round_down(self):
         g = self._graph_one("1.2 km")
@@ -609,7 +611,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(1.0)
+        assert res[0][0].toPython().magnitude == 1.0
 
     def test_round_half_up(self):
         """SPARQL ROUND uses round-half-up: 1.5 → 2."""
@@ -618,7 +620,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(2.0)
+        assert res[0][0].toPython().magnitude == 2.0
 
     def test_round_negative(self):
         """ROUND(-1.5) = -1 (round-half-up toward positive infinity)."""
@@ -627,7 +629,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (ROUND(?v) AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(-1.0)
+        assert res[0][0].toPython().magnitude == -1.0
 
     def test_round_preserves_datatype(self):
         g = self._graph_one("9.6 kg", CDT.ucum)
@@ -645,7 +647,7 @@ class TestSPARQLUnaryAndMath:
         """))
         assert len(res) == 0
 
-    # ── Unary minus ──────────────────────────────────────────────────────────
+    # -- Unary minus ----------
 
     def test_unary_minus_positive(self):
         g = self._graph_one("5 km")
@@ -653,7 +655,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(-5.0)
+        assert res[0][0].toPython().magnitude == -5.0
 
     def test_unary_minus_negative_becomes_positive(self):
         g = self._graph_one("-5 km")
@@ -661,7 +663,7 @@ class TestSPARQLUnaryAndMath:
         PREFIX ex: <https://example.org/>
         SELECT (-?v AS ?r) WHERE { ex:s1 ex:val ?v . }
         """))
-        assert res[0][0].toPython().magnitude == pytest.approx(5.0)
+        assert res[0][0].toPython().magnitude == 5.0
 
     def test_unary_minus_preserves_unit(self):
         g = self._graph_one("3 kg", CDT.ucum)
@@ -671,9 +673,9 @@ class TestSPARQLUnaryAndMath:
         """))
         val = res[0][0].toPython()
         assert val.ucum_unit == "kg"
-        assert val.magnitude == pytest.approx(-3.0)
+        assert val.magnitude == -3.0
 
-    # ── ABS then FILTER ──────────────────────────────────────────────────────
+    # -- ABS then FILTER ------
 
     def test_abs_then_filter(self):
         """ABS result can be used in a FILTER comparison."""
@@ -704,6 +706,57 @@ class TestSPARQLUnaryAndMath:
         subjects = [str(r[0]).split('/')[-1] for r in res]
         assert subjects == ["s3", "s2", "s1"]
 
+
+# SPARQL math edge cases on boundary values (from test_08)
+class TestSPARQLMathEdgeCases:
+
+    def _q1(self, fn, lexical, datatype=CDT.ucum):
+        g = Graph()
+        g.add((EX.s, EX.v, Literal(lexical, datatype=datatype)))
+        res = list(g.query(f"""
+        PREFIX ex: <https://example.org/>
+        SELECT ({fn}(?v) AS ?r) WHERE {{ ex:s ex:v ?v . }}
+        """))
+        return res[0][0]
+
+    def test_ceil_zero(self):
+        r = self._q1("CEIL", "0 m")
+        assert r.toPython().magnitude == 0.0
+
+    def test_floor_zero(self):
+        r = self._q1("FLOOR", "0 m")
+        assert r.toPython().magnitude == 0.0
+
+    def test_round_zero(self):
+        r = self._q1("ROUND", "0 m")
+        assert r.toPython().magnitude == 0.0
+
+    def test_abs(self):
+        r = self._q1("ABS", "-1 m")
+        assert r.toPython().magnitude == 1
+
+    def test_round_mass_unit(self):
+        """ROUND works on non-length CDT types."""
+        r = self._q1("ROUND", "2.7 kg", CDT.ucum)
+        assert r.toPython().magnitude == 3.0
+        assert r.datatype == CDT.ucum
+
+    def test_ceil_speed(self):
+        r = self._q1("CEIL", "3.2 m/s", CDT.ucum)
+        assert r.toPython().magnitude == 4.0
+        assert r.datatype == CDT.ucum
+
+    def test_floor_negative_near_zero(self):
+        """FLOOR(-0.1) = -1."""
+        r = self._q1("FLOOR", "-0.1 m")
+        assert r.toPython().magnitude == -1.0
+
+    def test_ceil_negative_near_zero(self):
+        """CEIL(-0.9) = 0."""
+        r = self._q1("CEIL", "-0.9 m")
+        assert r.toPython().magnitude == 0.0
+
+
   
 # Aggregates: SUM, AVG
 class TestSPARQLAggregates:
@@ -720,7 +773,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         assert len(results) == 1
-        assert results[0][0].toPython().magnitude == pytest.approx(6.0)
+        assert results[0][0].toPython().magnitude == 6.0
 
     def test_sum_skips_ill_typed(self):
         """SUM silently skips ill-typed literals and sums only valid ones."""
@@ -735,7 +788,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         # 1+2+3 = 6, ill-typed skipped
-        assert results[0][0].toPython().magnitude == pytest.approx(6.0)
+        assert results[0][0].toPython().magnitude == 6.0
 
     def test_sum_all_ill_typed_returns_zero(self):
         """SUM with all ill-typed literals returns 0 (empty sum)."""
@@ -747,7 +800,7 @@ class TestSPARQLAggregates:
         SELECT (SUM(?l) AS ?total) WHERE { ?s ex:length ?l . }
         """
         results = list(g.query(q))
-        assert float(str(results[0][0])) == pytest.approx(0.0)
+        assert float(str(results[0][0])) == 0.0
 
     def test_avg_valid_only(self):
         """AVG of valid CDT literals returns correct magnitude."""
@@ -760,7 +813,7 @@ class TestSPARQLAggregates:
         SELECT (AVG(?l) AS ?avg) WHERE { ?s ex:length ?l . }
         """
         results = list(g.query(q))
-        assert results[0][0].toPython().magnitude == pytest.approx(2.0)
+        assert results[0][0].toPython().magnitude == 2.0
 
     def test_avg_skips_ill_typed(self):
         """AVG silently skips ill-typed literals."""
@@ -774,7 +827,7 @@ class TestSPARQLAggregates:
         """
         results = list(g.query(q))
         # avg(2, 4) = 3, ill-typed skipped
-        assert results[0][0].toPython().magnitude == pytest.approx(3.0)
+        assert results[0][0].toPython().magnitude == 3.0
 
     def test_count_includes_ill_typed(self):
         """COUNT counts all bound values including ill-typed (by design)."""
@@ -788,10 +841,41 @@ class TestSPARQLAggregates:
         results = list(g.query(q))
         assert int(str(results[0][0])) == 2
 
-  
-# Patch install/uninstall
-  
 
+class TestSPARQLDimensionless:
+
+    def test_filter_dimensionless_equality(self):
+        """50% == 0.5 in a SPARQL FILTER."""
+        g = Graph()
+        g.add((EX.s1, EX.v, Literal("50 %",  datatype=CDT.ucum)))
+        g.add((EX.s2, EX.v, Literal("0.5 1", datatype=CDT.ucum)))
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT ?s WHERE {
+            ?s ex:v ?v .
+            FILTER(?v = "0.5 1"^^<https://w3id.org/cdt/ucum>)
+        }
+        """))
+        subjects = {str(r[0]) for r in res}
+        assert str(EX.s1) in subjects
+        assert str(EX.s2) in subjects
+
+    def test_order_by_dimensionless(self):
+        g = Graph()
+        g.add((EX.s1, EX.v, Literal("0.25 1", datatype=CDT.ucum)))
+        g.add((EX.s2, EX.v, Literal("50 %",   datatype=CDT.ucum)))
+        g.add((EX.s3, EX.v, Literal("0.1 1",  datatype=CDT.ucum)))
+        res = list(g.query("""
+        PREFIX ex: <https://example.org/>
+        SELECT ?s ?v WHERE { ?s ex:v ?v . }
+        ORDER BY ?v
+        """))
+        magnitudes = [r[1].toPython().to_si().magnitude for r in res]
+        assert magnitudes == sorted(magnitudes)
+
+
+  
+# Patch install/uninstall lifecycle
 class TestPatchLifecycle:
 
     def test_install_idempotent(self):
