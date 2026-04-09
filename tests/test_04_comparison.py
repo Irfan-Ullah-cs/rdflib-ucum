@@ -11,6 +11,7 @@ Tests for ordering operators on UCUMQuantity and CDT Literals:
 - Dimensionless comparisons
 """
 from cmath import isfinite
+from decimal import Decimal
 from math import isfinite as math_isfinite
 
 import pytest
@@ -167,50 +168,37 @@ class TestLiteralComparison:
 class TestLargeValueComparison:
 
     def test_large_value_parses(self):
-        q = UCUMQuantity("1e308 m")
-        assert q.magnitude == 1e308
-        assert math_isfinite(q.magnitude)
-
-    @pytest.mark.xfail(reason="IEEE 754: 1e309 overflows to inf, not a finite value")
-    def test_overflow_value(self):
-        q = UCUMQuantity("1e309 m")
-        assert q.magnitude == 1e309
-        assert math_isfinite(q.magnitude)
+        q = UCUMQuantity("1E1000 m")
+        assert q.magnitude == Decimal("1E1000")
+        assert q.magnitude.is_finite()  # sanity check: not inf or nan
+        assert q.ucum_unit == "m"
 
     def test_large_value_comparison(self):
-        assert UCUMQuantity("1e308 m") > UCUMQuantity("1e307 m")
+        assert UCUMQuantity("1E808 m") > UCUMQuantity("1E307 m")
 
     def test_large_value_cross_unit(self):
-        assert UCUMQuantity("1e200 km") == UCUMQuantity("1e203 m")
+        assert UCUMQuantity("1E700 km") == UCUMQuantity("1E703 m")
 
 
 class TestSmallValueComparison:
 
     def test_small_value_parses(self):
-        q = UCUMQuantity("1e-323 m")
-        assert q.magnitude == 1e-323
-        assert math_isfinite(q.magnitude) and q.magnitude > 0
+        q = UCUMQuantity("1E-1023 m")
+        assert q.magnitude == Decimal("1E-1023")
+        assert q.magnitude.is_finite() and q.magnitude > 0
 
-    @pytest.mark.xfail(reason="IEEE 754: 1e-324 underflows to 0")
-    def test_underflow_value(self):
-        q = UCUMQuantity("1e-324 m")
-        assert q.magnitude == 1e-324
-        assert math_isfinite(q.magnitude) and q.magnitude > 0
 
-    def test_small_value_distinguishable(self):
-        assert UCUMQuantity("1.000000000000003 m") != UCUMQuantity("1.000000000000002 m")
-
-    def test_small_value_indistinguishable_at_precision_limit(self):
-        assert UCUMQuantity("1.0000000000000003 m") == UCUMQuantity("1.0000000000000002 m")  # 15-16 sig digits
+    @pytest.mark.xfail(reason="IEEE 754: 1.000000000000000003 m == 1.000000000000000002 m at float precision")
+    def test_16_significant_digits(self):
+        assert UCUMQuantity("1.000000000000000003 m") == UCUMQuantity("1.000000000000000002 m")  # 15-16 sig digits
 
     def test_small_value_comparison(self):
         assert UCUMQuantity("1e-20 m") < UCUMQuantity("1e-19 m")
 
-    @pytest.mark.xfail(reason="IEEE 754: at small scales float density causes direct == to fail across units")
+
     def test_small_value_cross_unit_via_conversion(self):
-        """Use .to() — direct == is unreliable at small scales."""
-        result = UCUMQuantity("1e-20 km").to("m")
-        assert result.magnitude == 1e-17
+        result = UCUMQuantity("1E-20 km").to("m")
+        assert result.magnitude == Decimal("1E-17")
 
 
 # Temperature comparisons 
@@ -218,7 +206,7 @@ class TestTemperatureComparison:
 
     def test_kelvin_parses(self):
         q = UCUMQuantity("273.15 K")
-        assert q.magnitude == 273.15
+        assert q.magnitude == Decimal("273.15")
 
     def test_celsius_parses(self):
         q = UCUMQuantity("0 Cel")

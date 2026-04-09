@@ -371,7 +371,7 @@ def _patched_Builtin_ABS(e, ctx) -> Literal:
     
 # Patched Builtin_CEIL  (handles  CEIL(?x) )
 def _patched_Builtin_CEIL(e, ctx) -> Literal:
-    r = _cdt_unary(e.arg, lambda m: float(math.ceil(m)))
+    r = _cdt_unary(e.arg, lambda m: Decimal(math.ceil(m)))
     if r is not None:
         return r
     return _orig_ceil(e, ctx)
@@ -380,7 +380,7 @@ def _patched_Builtin_CEIL(e, ctx) -> Literal:
     
 # Patched Builtin_FLOOR  (handles  FLOOR(?x) )
 def _patched_Builtin_FLOOR(e, ctx) -> Literal:
-    r = _cdt_unary(e.arg, lambda m: float(math.floor(m)))
+    r = _cdt_unary(e.arg, lambda m: Decimal(math.floor(m)))
     if r is not None:
         return r
     return _orig_floor(e, ctx)
@@ -390,8 +390,8 @@ def _patched_Builtin_FLOOR(e, ctx) -> Literal:
 # Patched Builtin_ROUND  (handles  ROUND(?x) )
 def _patched_Builtin_ROUND(e, ctx) -> Literal:
     def _round(m):
-        v = float(m)
-        return float(int(Decimal(v).quantize(1, ROUND_HALF_UP if v > 0 else ROUND_HALF_DOWN)))
+        v = Decimal(m) if not isinstance(m, Decimal) else m
+        return Decimal(int(v.quantize(1, ROUND_HALF_UP if v > 0 else ROUND_HALF_DOWN)))
 
     r = _cdt_unary(e.arg, _round)
     if r is not None:

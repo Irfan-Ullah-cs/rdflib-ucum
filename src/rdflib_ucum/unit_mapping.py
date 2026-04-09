@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+from decimal import Decimal
 
 import pint
 
@@ -36,8 +37,11 @@ def get_ureg() -> pint.UnitRegistry:
     global _ureg
     if _ureg is None:
         try:
-            from ucumvert import PintUcumRegistry  # type: ignore[import-untyped]
-            _ureg = PintUcumRegistry()
+            from ucumvert import PintUcumRegistry
+            _ureg = PintUcumRegistry(non_int_type=Decimal)
+            # patch transformer to use this registry instead of the default app registry
+            from ucumvert.ucum_pint import UcumToPintTransformer
+            _ureg._from_ucum_transformer = UcumToPintTransformer(ureg=_ureg).transform
         except ImportError as e:
             raise ImportError(
                 "rdflib-ucum requires 'ucumvert' for UCUM unit parsing. "

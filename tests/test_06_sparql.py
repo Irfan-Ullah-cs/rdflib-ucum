@@ -14,6 +14,8 @@ Tests for SPARQL-level CDT operator support and custom functions:
 - SPARQL math edge cases on boundary values
 - Dimensionless values in SPARQL
 """
+from decimal import Decimal
+
 import pytest
 from rdflib import Graph, Literal, Namespace, URIRef, XSD
 from rdflib.plugins.sparql.evalutils import SPARQLError
@@ -240,7 +242,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == 5.2
+        assert val.magnitude == Decimal("5.2")
 
     def test_sub(self):
         g = Graph()
@@ -256,7 +258,7 @@ class TestSPARQLArithmetic:
         """
         results = list(g.query(q))
         val = results[0][0].toPython()
-        assert val.magnitude == 4.8
+        assert val.magnitude == Decimal("4.8")
 
     def test_mul_by_scalar(self):
         g = Graph()

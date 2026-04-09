@@ -6,6 +6,7 @@ Tests for:
 - RDFLib bind() registration for CDT types
 - Literal.toPython() returns correct Python types
 """
+from decimal import Decimal
 import math
 
 import pytest
@@ -28,47 +29,35 @@ class TestValidLexicalForms:
 
     def test_decimal_value(self):
         q = UCUMQuantity("1.5 km")
-        assert q.magnitude == 1.5
+        assert q.magnitude == Decimal("1.5")
         assert q.ucum_unit == "km"
 
     def test_negative_value(self):
         q = UCUMQuantity("-1.5 km")
-        assert q.magnitude == -1.5
+        assert q.magnitude == Decimal("-1.5")
         assert q.ucum_unit == "km"
 
-
-    def test_large_magnitude(self):
-        q = UCUMQuantity("1e308 m")
-        assert math.isfinite(q.magnitude)  # sanity check: not inf or nan
-        assert q.magnitude == 100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0
-        assert q.ucum_unit == "m"   
-
-    def test_small_magnitude(self):
-        q = UCUMQuantity("5e-324 m")
-        assert math.isfinite(q.magnitude)  # sanity check: not inf or nan
-        assert q.magnitude == 5e-324
+    def test_large_integer_value(self):
+        q = UCUMQuantity("12345678901234567890100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 m")
+        assert q.magnitude == 12345678901234567890100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
         assert q.ucum_unit == "m"
 
-    @pytest.mark.xfail(reason="1e309 exceeds sys.float_info.max, overflows to inf")
-    def test_large_magnitude(self):
+
+    def test_larger_than_IEEE754(self):
         q = UCUMQuantity("1e309 m")
-        assert math.isfinite(q.magnitude)  # sanity check: not inf or nan
-        assert q.magnitude == 100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0
+        assert q.magnitude.is_finite()  # sanity check: not inf or nan
+        assert q.magnitude == Decimal("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0")
         assert q.ucum_unit == "m"
 
-    def test_smallest_subnormal(self):
-        q = UCUMQuantity("5e-324 m")
+    def test_smaller_than_IEEE754(self):
+        q = UCUMQuantity("5E-325 m")
         assert math.isfinite(q.magnitude)
         assert q.magnitude > 0.0        # did not underflow to zero
         assert q.ucum_unit == "m"
 
-    def test_underflow_to_zero(self):
-        q = UCUMQuantity("1e-325 m")
-        assert q.magnitude == 0.0       # underflows to zero
-
     def test_compound_unit_division(self):
         q = UCUMQuantity("9.8 m/s2")
-        assert q.magnitude == 9.8
+        assert q.magnitude == Decimal('9.8')
         assert q.ucum_unit == "m/s2"
 
     def test_compound_unit_dot(self):
@@ -115,7 +104,7 @@ class TestValidLexicalForms:
 
     def test_temperature_kelvin(self):
         q = UCUMQuantity("273.15e33 K")
-        assert q.magnitude == 273.15e33 
+        assert q.magnitude == Decimal('2.7315E+35') 
         assert q.ucum_unit == "K"
 
 
@@ -129,7 +118,7 @@ class TestValidLexicalForms:
 
     def test_no_unit_dimensionless(self):
         q = UCUMQuantity("1.2 m/m")
-        assert q.magnitude == 1.2
+        assert q.magnitude == Decimal('1.2')
         assert q.ucum_unit == "m/m"
         assert q.dimensionality == {}  # empty dict means dimensionless in pint
 

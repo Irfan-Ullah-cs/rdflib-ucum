@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Union
 from .exceptions import UCUMParseError, UCUMDimensionError, UCUMArithmeticError
+from decimal import Decimal
 
 import pint
 
@@ -62,24 +63,24 @@ class UCUMQuantity:
             m = LEXICAL_RE.match(value)
             if m:
                 mag_str, ucum_code = m.group(1), m.group(2)
-                mag = float(mag_str) if ("." in mag_str or "e" in mag_str.lower()) else int(mag_str)
+                mag = Decimal(mag_str) if ("." in mag_str or "e" in mag_str.lower()) else Decimal(mag_str)
                 self._pint_qty = ureg.Quantity(mag, cached_parse_unit(ucum_code))
                 self._ucum_unit = ucum_code
                 return
             # Fallback: bare number → dimensionless
             try:
                 stripped = value.strip()
-                mag = float(stripped) if ("." in stripped or "e" in stripped.lower()) else int(stripped)
+                mag = Decimal(stripped) if ("." in stripped or "e" in stripped.lower()) else Decimal(stripped)
                 self._pint_qty = ureg.Quantity(mag, cached_parse_unit("1"))
                 self._ucum_unit = "1"
                 return
-            except ValueError:
+            except (ValueError, ArithmeticError):
                 pass
             if unit is None:
                 raise UCUMParseError(f"Cannot parse UCUM quantity: {value!r}")
             try:
-                mag = float(value) if ("." in value or "e" in value.lower()) else int(value)
-            except ValueError:
+                mag = Decimal(value) if ("." in value or "e" in value.lower()) else Decimal(value)
+            except (ValueError, ArithmeticError):
                 raise UCUMParseError(f"Cannot parse UCUM quantity: {value!r}")
             self._pint_qty = ureg.Quantity(mag, cached_parse_unit(unit))
             self._ucum_unit = unit
@@ -87,14 +88,16 @@ class UCUMQuantity:
 
         if unit is None:
             raise UCUMParseError("unit is required when value is numeric")
+        if isinstance(value, float):
+            value = Decimal(str(value))
         self._pint_qty = ureg.Quantity(value, cached_parse_unit(unit))
         self._ucum_unit = unit
 
     # ---- Properties   ----------
 
     @property
-    def magnitude(self) -> float:
-        return float(self._pint_qty.magnitude)
+    def magnitude(self):
+        return self._pint_qty.magnitude
 
     @property
     def units(self) -> pint.Unit:
@@ -117,7 +120,7 @@ class UCUMQuantity:
     def to_lexical(self) -> str:
         """Serialize back to UCUM lexical form: ``"1.2 km"``."""
         mag = self._pint_qty.magnitude
-        if isinstance(mag, float) and mag == int(mag) and "e" not in f"{mag}".lower():
+        if isinstance(mag, Decimal) and mag == mag.to_integral_value() and "E" not in str(mag):
             mag_str = str(int(mag))
         else:
             mag_str = str(mag)
@@ -233,6 +236,8 @@ class UCUMQuantity:
             result_ucum = f"{self._ucum_unit}.{other._ucum_unit}"
             return UCUMQuantity(result_pint, unit=result_ucum)
         if isinstance(other, (int, float)):
+            if isinstance(other, float):
+                other = Decimal(str(other))
             return UCUMQuantity(self._pint_qty * other, unit=self._ucum_unit)
         return NotImplemented
 
@@ -249,7 +254,10 @@ class UCUMQuantity:
                 raise UCUMArithmeticError(
                     f"Division by zero: {self._ucum_unit} / 0"
                 )
+            if isinstance(other, float):
+                other = Decimal(str(other))
             return UCUMQuantity(self._pint_qty / other, unit=self._ucum_unit)
+
         return NotImplemented
 
     def __neg__(self) -> UCUMQuantity:

@@ -15,6 +15,8 @@ Tests for UCUMQuantity arithmetic and conversion:
 - Dimensionless arithmetic
 - UCUMUnit: parse, equality, hash
 """
+from decimal import Decimal
+
 import pytest
 import pint
 
@@ -37,28 +39,28 @@ class TestAddition:
     def test_add_cross_unit_converts_to_left(self):
         """200 m added to 5 km — result in km."""
         result = UCUMQuantity("5 km") + UCUMQuantity("200 m")
-        assert result.magnitude == 5.2
+        assert result.magnitude == Decimal("5.2")
         assert result.ucum_unit == "km"
 
     def test_add_mass(self):
         result = UCUMQuantity("1 kg") + UCUMQuantity("500 g")
-        assert result.magnitude == 1.5
+        assert result.magnitude == Decimal("1.5")
         assert result.ucum_unit == "kg"
 
     def test_add_time(self):
         result = UCUMQuantity("1 h") + UCUMQuantity("30 min")
-        assert result.magnitude == 1.5
+        assert result.magnitude == Decimal("1.5")
         assert result.ucum_unit == "h"
 
     def test_add_energy(self):
         result = UCUMQuantity("1 kJ") + UCUMQuantity("500 J")
-        assert result.magnitude == 1.5
+        assert result.magnitude == Decimal("1.5")
         assert result.ucum_unit == "kJ"
 
     def test_add_complex_compound(self):
         """Force units: N + kg.m/s2 — same dimension, different notation."""
         result = UCUMQuantity("10 N") + UCUMQuantity("5 kg.m/s2")
-        assert result.magnitude == 15.0
+        assert result.magnitude == Decimal("15.0")
         assert result.ucum_unit == "N"
 
     def test_add_incompatible_raises(self):
@@ -75,7 +77,7 @@ class TestSubtraction:
 
     def test_sub_cross_unit(self):
         result = UCUMQuantity("5 km") - UCUMQuantity("200 m")
-        assert result.magnitude == 4.8
+        assert result.magnitude == Decimal("4.8")
         assert result.ucum_unit == "km"
 
     def test_sub_zero_result(self):
@@ -274,7 +276,7 @@ class TestUnitConversion:
     def test_eV_to_J(self):
         """Multi-hop: eV → J (electron volt to joule)."""
         result = UCUMQuantity("1 eV").to("J")
-        assert result.magnitude == pytest.approx(1.602176634e-19, rel=1e-6)
+        assert result.magnitude == Decimal('1.602176634E-19')
 
     def test_N_to_kg_m_s2(self):
         """1 N = 1 kg.m/s2."""
